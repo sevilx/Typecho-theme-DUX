@@ -48,8 +48,7 @@ tbquire.config({
 		'ias'           : 'libs/ias.min',
 		'hammer'        : 'libs/hammer.min',
 		'main'          : 'main',
-		'comment'       : 'comment',
-		'user'          : 'user'
+		'comment'       : 'comment'
 	}
 })
 
