@@ -6,8 +6,9 @@
             <div class="pagemenus">
                 <ul class="pagemenu">
 <?php $this->widget('Widget_Contents_Page_List')->to($cpages);?>
+<?php $currentPermalink = (string) $this->permalink; ?>
 <?php while ($cpages->next()): ?>
-                    <li <?php if($cpages->title==$this->title){print ' class="active"';} ?>><a href="<?php $cpages->permalink();?>"><?php $cpages->title();?></a></li>
+                    <li<?php if ((string) $cpages->permalink === $currentPermalink): ?> class="active"<?php endif; ?>><a href="<?php $cpages->permalink();?>"><?php $cpages->title();?></a></li>
 <?php endwhile; ?>
                 </ul>
             </div>
@@ -20,7 +21,7 @@
             <article class="article-content">
                 <?php parseContent($this); ?>
             </article>
-<?php //$this->need('comments.php'); ?>
+<?php $this->need('comments.php'); ?>
         </div>
     </div>
 <?php $this->need('footer.php'); ?>

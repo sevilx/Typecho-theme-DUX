@@ -13,13 +13,11 @@ $this->need('header.php');?>
     <section class="container">
     <div class="content-wrap">
         <div class="content">
-<?php if($this->_currentPage==1): ?>
             <!--幻灯片开始-->
 <?php if ($this->options->Slider == 'SliderTrue'): ?>
                 <?php slout(); ?>
 <?php endif; ?>
             <!--幻灯片结束-->
-<?php endif; ?>
             <!--置顶文章-->
             <?php hotpost(); ?>
 
@@ -32,7 +30,7 @@ $this->need('header.php');?>
 <?php while($this->next()): ?>
             <article class="excerpt">
 <?php if ($this->options->indexpic == 'able'): ?>
-                <a class="focus" href="<?php $this->permalink() ?>"><img src="<?php $this->options->themeUrl('img/thumbnail.png'); ?>" data-src="<?php echo showThumb($this,null,true); ?>" class="thumb"></a>
+                <a class="focus" href="<?php $this->permalink() ?>"><img src="<?php $this->options->themeUrl('img/thumbnail.png'); ?>" data-src="<?php echo duxEsc(showThumb($this)); ?>" class="thumb"></a>
 <?php endif; ?>
                 <header>
                     <a class="cat"><?php $this->category(',',false); ?><i></i></a>
@@ -44,7 +42,7 @@ $this->need('header.php');?>
                     <span class="pv"><i class="fa fa-eye"></i>阅读(<?php get_post_view($this) ?>)</span>
                     <a class="pc" href="<?php $this->permalink() ?>#comments"><i class="fa fa-comments-o"></i>评论(<?php $this->commentsNum('0', '1', '%d'); ?>)</a>
                 </p>
-                <p class="note"><?php $this->excerpt(111, '...'); ?></p>
+                <p class="note"><?php $this->excerpt(150, '...'); ?></p>
             </article>
 <?php endwhile; ?>
 <?php endif; ?>

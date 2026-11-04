@@ -4,16 +4,18 @@
  *
  * @package custom
  */
- if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
-<?php $this->need('header.php'); ?>
+if (!defined('__TYPECHO_ROOT_DIR__')) exit;
+$this->need('header.php');
+?>
     <div class="container <?php if ($this->options->pagesidebar == "able"): ?>container-page<?php else: ?>container-no-sidebar<?php endif; ?>">
 <?php if ($this->options->pagesidebar == "able"): ?>
         <div class="pageside">
             <div class="pagemenus">
                 <ul class="pagemenu">
-<?php $this->widget('Widget_Contents_Page_List')->to($cpages);?>
+<?php $this->widget('Widget_Contents_Page_List')->to($cpages); ?>
+<?php $currentPermalink = (string) $this->permalink; ?>
 <?php while ($cpages->next()): ?>
-                    <li <?php if($cpages->permalink==$this->permalink){echo ' class="active"';} ?>><a href="<?php $cpages->permalink()?>"><?php $cpages->title()?></a></li>
+                    <li<?php if ((string) $cpages->permalink === $currentPermalink): ?> class="active"<?php endif; ?>><a href="<?php $cpages->permalink(); ?>"><?php $cpages->title(); ?></a></li>
 <?php endwhile; ?>
                 </ul>
             </div>
@@ -21,30 +23,42 @@
 <?php endif; ?>
         <div class="content">
             <header class="article-header">
-                <h1 class="article-title"><a href="<?php $this->permalink(); ?>"><?php $this->title() ?></a></h1>
+                <h1 class="article-title"><a href="<?php $this->permalink(); ?>"><?php $this->title(); ?></a></h1>
             </header>
-        <article class="article-content"></article>
+            <article class="article-content"></article>
 <?php
-    $this->widget('Widget_Contents_Post_Recent', 'pageSize=10000')->to($archives);
-    $year=0; $mon=0; $i=0; $j=0;
-    $output = '<article class="archives">';
-    while($archives->next()):
-    $year_tmp = date('Y',$archives->created);
-    $mon_tmp = date('m',$archives->created);
-    $y=$year; $m=$mon;
-    if ($mon != $mon_tmp && $mon > 0) $output .= '</ul></div>';
-    if ($year != $year_tmp && $year > 0) $output .= '';
-    if ($year != $year_tmp) {
-    $year = $year_tmp;
+$this->widget('Widget_Contents_Post_Recent', 'pageSize=10000')->to($archives);
+
+$month = '';
+$opened = false;
+$output = '<article class="archives">';
+
+while ($archives->next()):
+    $yearTmp = date('Y', $archives->created);
+    $monthTmp = date('m', $archives->created);
+    $key = $yearTmp . '-' . $monthTmp;
+
+    if ($key !== $month) {
+        // 只有确实打开过月份分组才闭合，避免空站点产生多余的 </ul></div>
+        if ($opened) {
+            $output .= '</ul></div>';
+        }
+        $month = $key;
+        $output .= '<div class="item"><h3>' . $yearTmp . '年' . $monthTmp
+            . ' 月</h3><ul class="archives-list">';
+        $opened = true;
     }
-    if ($mon != $mon_tmp) {
-    $mon = $mon_tmp;
-    $output .= '<div class="item"><h3>'. $year . '年' . $mon .' 月</h3><ul class="archives-list">'; //输出月份
-    }
-    $output .= '<li><time>'.date('d日: ',$archives->created).'</time><a href="'.$archives->permalink .'">'. $archives->title .'</a> <span class="text-muted">'. $archives->commentsNum.'评论</span></li>'; //输出文章日期和标题
-    endwhile;
-    $output .= '</ul></div></article>';
+
+    $output .= '<li><time>' . date('d日: ', $archives->created) . '</time><a href="'
+        . duxEsc($archives->permalink) . '">' . duxEsc($archives->title)
+        . '</a> <span class="text-muted">' . (int) $archives->commentsNum . '评论</span></li>';
+endwhile;
+
+if ($opened) {
+    $output .= '</ul></div>';
+}
+$output .= '</article>';
+echo $output;
 ?>
-<?php echo $output; ?>
-    </div>
+        </div>
 <?php $this->need('footer.php'); ?>

@@ -28,6 +28,9 @@ if( !window.console ){
 */
 jsui.bd = $('body')
 jsui.is_signin = jsui.bd.hasClass('logged-in') ? true : false;
+// footer.php 用 json_encode 输出 roll；主题设置被清空或输出失败时兜底，
+// 否则下面 jsui.roll[0] 会抛 TypeError 并中断后续所有交互初始化。
+if (!jsui.roll || !jsui.roll.length) jsui.roll = [1];
 
 if( $('.widget-nav').length ){
     $('.widget-nav li').each(function(e){
@@ -295,26 +298,14 @@ if (jsui.bd.hasClass('comment-open')) {
 }
 
 
-/* 
- * page u
+/*
+ * page u / page theme
  * ====================================================
+ * 已移除：这两个分支来自 WordPress 版 DUX，依赖主题中并不存在的
+ * jsui.uri + '/action/user.php' 与 /js/theme.js，且 body class
+ * page-template-pagesuser-php / page-template-pagestheme-php 在 Typecho
+ * 下永远不会被输出。保留只会产生 404 请求和模块加载超时。
 */
-if (jsui.bd.hasClass('page-template-pagesuser-php')) {
-    tbquire(['user'], function(user) {
-        user.init()
-    })
-}
-
-
-/* 
- * page theme
- * ====================================================
-*/
-if (jsui.bd.hasClass('page-template-pagestheme-php')) {
-    tbquire(['theme'], function(theme) {
-        theme.init()
-    })
-}
 
 
 /* 
@@ -361,11 +352,18 @@ if( jsui.bd.hasClass('page-template-pagesnavs-php') ){
  * ====================================================
 */
 if( jsui.bd.hasClass('search-results') ){
-    var val = $('.site-search-form .search-input').val()
-    var reg = eval('/'+val+'/i')
-    $('.excerpt h2 a, .excerpt .note').each(function(){
-        $(this).html( $(this).text().replace(reg, function(w){ return '<b>'+w+'</b>' }) )
-    })
+    // 旧写法 eval('/'+val+'/i') 遇到 "("、"[" 等搜索词会抛 SyntaxError，
+    // 中断后面所有初始化，且存在代码注入风险。改为转义后用 RegExp。
+    var keyword = $.trim($('.site-search-form .search-input').val() || '')
+    if( keyword ){
+        var escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        var reg = new RegExp(escaped, 'i')
+        $('.excerpt h2 a, .excerpt .note').each(function(){
+            var $el = $(this)
+            var safe = $('<div/>').text($el.text()).html()
+            $el.html( safe.replace(reg, function(w){ return '<b>'+w+'</b>' }) )
+        })
+    }
 }
 
 
@@ -471,7 +469,8 @@ if( $('.bdsharebuttonbox').length ){
         }*/
     }
 
-    with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?cdnversion='+~(-new Date()/36e5)];
+    // 使用协议相对地址，避免在 HTTPS 站点上被浏览器拦截为混合内容
+    with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='//bdimg.share.baidu.com/static/api/js/share.js?cdnversion='+~(-new Date()/36e5)];
 }
 
 

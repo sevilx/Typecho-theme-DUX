@@ -15,7 +15,7 @@
 <?php while($this->next()): ?>
                 <article class="excerpt">
 <?php if ($this->options->indexpic == 'able'): ?>
-                    <a class="focus" href="<?php $this->permalink() ?>"><img src="<?php $this->options->themeUrl('img/thumbnail.png'); ?>" data-src="<?php echo showThumb($this,null,true); ?>" class="thumb"></a>
+                    <a class="focus" href="<?php $this->permalink() ?>"><img src="<?php $this->options->themeUrl('img/thumbnail.png'); ?>" data-src="<?php echo duxEsc(showThumb($this)); ?>" class="thumb"></a>
 <?php endif; ?>
                     <header>
                         <a class="cat"><?php $this->category(',',false); ?><i></i></a>
@@ -36,7 +36,7 @@
                 </div>
             </div>
         </div>
-<?php $this->need('sidebar.php'); ?>
+<?php $this->need('page_sidebar.php'); ?>
     </section>
 
 <?php $this->need('footer.php'); ?>

@@ -4,9 +4,8 @@
         <div class="f404">
             <img src="<?php $this->options->themeUrl('img/404.png'); ?>">
             <h1>404 Page Not Found</h1>
-            <h2>沒有找到你要的内容！</h2>
             <p>
-                <a class="btn btn-primary" href="<?php $this->options ->siteUrl(); ?>">返回首页</a>
+                <a class="btn btn-primary" href="<?php $this->options->siteUrl(); ?>">返回首页</a>
             </p>
         </div>
     </section>

@@ -1,5 +1,19 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
+
+// 侧边栏浮动模块序号：统一用 json_encode 输出，避免引号/逗号导致 JS 注入或语法错误
+$rollRaw = (string) ($this->options->sitebar_fu ?: '1');
+$roll = array_values(array_filter(array_map('intval', explode(',', $rollRaw))));
+if (empty($roll)) {
+    $roll = array(1);
+}
+$jsui = array(
+    'www'       => (string) $this->options->siteUrl,
+    'uri'       => rtrim((string) $this->options->themeUrl, '/'),
+    'ver'       => '1.3.1',
+    'roll'      => $roll,
+    'ajaxpager' => ($this->options->infpage == 'disable') ? 0 : 1,
+);
 ?>
 
     <!--footer-->
@@ -25,34 +39,28 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 <?php endif; ?>
             <div class="copyright">
                 <p>
-                    &copy; <?php echo date("Y"); ?> <a href="<?php $this->options ->siteUrl(); ?>"><?php $this->options->title();?></a>
+                    &copy; 2010 - <?php echo date("Y"); ?> <a href="<?php $this->options->siteUrl(); ?>"><?php $this->options->title();?></a>
                     <?php if($this->options->miitbeian): ?> | <a href="http://beian.miit.gov.cn/" target="_blank" rel="nofollow"><?php $this->options->miitbeian(); ?></a><?php endif; ?>
                     <br>
-                    Powered by <a href="http://www.typecho.org/" target="_blank">Typecho</a> |
-                    Theme <a href="https://github.com/hiCasper/Typecho-theme-DUX" target="_blank">DUX</a>
+                    <!--Powered by <a href="http://www.typecho.org/" target="_blank">Typecho</a> |
+                    Theme <a href="https://github.com/hiCasper/Typecho-theme-DUX" target="_blank">DUX</a>-->
+                    本站部分图片、文章来源于网络，版权归原作者所有，如有侵权，请联系我们删除。
                 </p>
             </div>
             <div class="hide"></div>
         </div>
     </footer>
 <?php if ($this->options->useHighline == 'able'): ?>
-    <script src="//cdn.jsdelivr.net/highlight.js/9.11.0/highlight.min.js"></script>
+    <script src="<?php $this->options->themeUrl('css/highlight.min.js'); ?>"></script>
 <?php endif; ?>
     <script>
-        window.jsui={
-            www: '<?php $this->options ->siteUrl(); ?>',
-            uri: '<?php echo rtrim($this->options ->themeUrl,"/");?>',
-            ver: '1.0',
-            roll: [<?php if (!empty($this->options->sitebar_fu)) {$text = $this->options->sitebar_fu;} else{$text='1';} $sf_arr = explode(",", $text);foreach($sf_arr as $val){echo '"'.$val.'",';} //侧边栏第几个模块浮动 ?>],
-            ajaxpager: '<?php if ($this->options->infpage == 'disable'): ?>0<?php else: ?>1<?php endif; ?>'
-        };
+        window.jsui = <?php echo json_encode($jsui, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
     </script>
-    <script type='text/javascript' src='//cdn.jsdelivr.net/bootstrap/3.2.0/js/bootstrap.min.js'></script>
+    <script type='text/javascript' src='<?php $this->options->themeUrl('css/bootstrap.min.js'); ?>'></script>
     <script type='text/javascript' src='<?php $this->options->themeUrl('js/loader.js'); ?>'></script>
     <!-- Analytics code -->
 <?php if($this->options->GoogleAnalytics): ?>
     <?php $this->options->GoogleAnalytics(); ?>
 <?php endif; ?>
-
 </body>
 </html>
