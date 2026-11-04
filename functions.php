@@ -225,23 +225,53 @@ function parseContent($obj)
 /** 文章阅读次数统计 */
 function get_post_view($archive)
 {
-    static $columnChecked = false;
+    static $viewsAvailable = null;
 
     $cid = (int) $archive->cid;
     $db = duxDb();
 
-    // 仅在每次请求首次调用时检查 views 列是否存在，避免重复 ALTER TABLE
-    if (!$columnChecked) {
-        try {
-            $db->fetchRow($db->select('views')->from('table.contents')->limit(1));
-        } catch (\Throwable $e) {
-            $prefix = $db->getPrefix();
+    if ($viewsAvailable === null) {
+        /*
+         * 必须用 SELECT * 判断列是否真实存在。
+         * 不能写成 $db->select('views')：SQLite 会把不存在的双引号标识符
+         * 降级为字符串字面量，返回 array('views' => 'views')，导致误判为
+         * 「列已存在」并跳过建表，随后的 UPDATE 会抛 no such column 而整页 500。
+         */
+        $probeAvailable = function () use ($db) {
             try {
-                $db->query('ALTER TABLE `' . $prefix . 'contents` ADD `views` INT(10) NOT NULL DEFAULT 0');
-            } catch (\Throwable $ignored) {
+                $probe = $db->fetchRow($db->select('*')->from('table.contents')->limit(1));
+                return is_array($probe) && array_key_exists('views', $probe);
+            } catch (\Throwable $e) {
+                return false;
             }
+        };
+
+        $viewsAvailable = $probeAvailable();
+
+        if (!$viewsAvailable) {
+            try {
+                /*
+                 * @ 用来压住底层适配器在「只读库 / 无 ALTER 权限」时抛出的 PHP
+                 * warning：否则在开启 display_errors 的环境里，警告会被插进
+                 * 「阅读(0)」的 HTML 中，并反复写入 error_log。异常仍由下面的
+                 * catch 接管，降级行为不受影响。
+                 * 第二个参数显式指定写库操作，避免主从分离时被发到只读从库。
+                 */
+                @$db->query(
+                    'ALTER TABLE `' . $db->getPrefix() . 'contents` ADD `views` INT(10) NOT NULL DEFAULT 0',
+                    $db::WRITE
+                );
+            } catch (\Throwable $ignored) {
+                // 权限不足或适配器不支持时，下面会复查并安静降级
+            }
+            // DDL 之后必须重新确认；建列失败就彻底停用计数，绝不让页面 500
+            $viewsAvailable = $probeAvailable();
         }
-        $columnChecked = true;
+    }
+
+    if (!$viewsAvailable) {
+        echo 0;
+        return;
     }
 
     try {
@@ -251,12 +281,12 @@ function get_post_view($archive)
         return;
     }
 
-    if (!is_array($row)) {
+    if (!is_array($row) || !array_key_exists('views', $row)) {
         echo 0;
         return;
     }
 
-    $views = (int) ($row['views'] ?? 0);
+    $views = (int) $row['views'];
 
     if ($archive->is('single')) {
         $cookie = \class_exists('Typecho\Cookie')
@@ -266,17 +296,21 @@ function get_post_view($archive)
         $visited = array_values(array_filter(explode(',', (string) $cookie), 'strlen'));
 
         if (!in_array((string) $cid, $visited, true)) {
-            $db->query($db->update('table.contents')
-                ->rows(array('views' => $views + 1))
-                ->where('cid = ?', $cid));
+            try {
+                @$db->query($db->update('table.contents')
+                    ->rows(array('views' => $views + 1))
+                    ->where('cid = ?', $cid), $db::WRITE);
 
-            $visited[] = (string) $cid;
-            if (class_exists('Typecho\Cookie')) {
-                \Typecho\Cookie::set('extend_contents_views', implode(',', $visited));
-            } else {
-                Typecho_Cookie::set('extend_contents_views', implode(',', $visited));
+                $visited[] = (string) $cid;
+                if (class_exists('Typecho\Cookie')) {
+                    \Typecho\Cookie::set('extend_contents_views', implode(',', $visited));
+                } else {
+                    Typecho_Cookie::set('extend_contents_views', implode(',', $visited));
+                }
+                $views++;
+            } catch (\Throwable $e) {
+                // 计数失败只影响数字，不影响文章页渲染
             }
-            $views++;
         }
     }
 
