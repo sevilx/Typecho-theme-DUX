@@ -366,7 +366,9 @@ if( jsui.bd.hasClass('search-results') ){
  * search
  * ====================================================
 */
-$('.search-show').bind('click', function(){
+$('.search-show').bind('click', function(e){
+    // 搜索按钮的 href 已由 javascript:; 改为 #，必须阻止默认跳转与顶部滚动
+    e.preventDefault()
     $(this).find('.fa').toggleClass('fa-remove')
 
     jsui.bd.toggleClass('search-on')

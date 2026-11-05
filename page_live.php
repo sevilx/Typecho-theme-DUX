@@ -7,6 +7,15 @@
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 ?>
 <?php $this->need('header.php'); ?>
+<?php
+// 片源 / 封面全部改为后台可配置，默认留空 = 不向任何第三方域名发起请求。
+// 所有取值先过 http(s) 协议白名单，再过 HTML 转义才写进 video 属性。
+$duxLiveVideo  = duxSafeUrl($this->options->liveVideoUrl);
+$duxLivePoster = duxSafeUrl($this->options->livePosterUrl);
+if ($duxLivePoster === '') {
+    $duxLivePoster = duxAssetUrl('img/banner.jpg');
+}
+?>
 
 <style>
 /* 演播室专用暗黑科技风样式 */
@@ -198,10 +207,16 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
                     <!-- 左侧 HTML5 播放器（仅加载公开开源演示片源，不触发任何私有域名请求） -->
                     <div class="video-box">
                         <div class="video-overlay-tip">
-                            <i class="fa fa-film"></i> 当前为非直播时段，正在播放开源测试样片 (1080P H.264)
+<?php if ($duxLiveVideo !== ''): ?>
+                            <i class="fa fa-film"></i> 当前为非直播时段，正在播放站内配置的演示片源
+<?php else: ?>
+                            <i class="fa fa-film"></i> 当前为非直播时段，未配置片源（默认不加载任何外部视频）
+<?php endif; ?>
                         </div>
-                        <video id="studio-player" controls preload="metadata" poster="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg">
-                            <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
+                        <video id="studio-player" controls preload="none" poster="<?php echo duxEsc($duxLivePoster); ?>">
+<?php if ($duxLiveVideo !== ''): ?>
+                            <source src="<?php echo duxEsc($duxLiveVideo); ?>" type="video/mp4">
+<?php endif; ?>
                             您的浏览器不支持 HTML5 视频播放。
                         </video>
                     </div>

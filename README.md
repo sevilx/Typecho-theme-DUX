@@ -3,7 +3,7 @@
 > Forked from https://coding.net/u/Arco-X/p/DUX-for-Typecho/git
 > 一款基于大前端 DUX for WordPress 主题修改而来的 Typecho 主题。
 
-当前分支针对 **Typecho 1.3.x 开发版（1.3.1-rc）+ PHP 8.2** 做了完整适配与回归，
+当前分支针对 **Typecho 1.3.x 开发版（1.3.1-rc）+ PHP 8.2** 做了完整适配、回归与安全审计，
 同时保留对 Typecho 1.2+ / PHP 7.4+ 的兼容回退。
 
 ## 特性
@@ -45,6 +45,43 @@ python tests/http_regression.py --base http://127.0.0.1:8901 --out report.json
 已验证的覆盖范围：首页与分页、文章页、分类/标签/搜索/作者归档、RSS、
 自定义模板页面、评论分页与嵌套评论、置顶文章、幻灯片、附件缩略图、404、全部静态资源。
 
+## 安全审计
+
+`tests/security_audit.py` 是纯标准库、**只读、不联网、不改文件**的静态审计脚本，可离线跑、可进 CI。
+
+```bash
+python tests/security_audit.py                    # 打印摘要
+python tests/security_audit.py --json audit.json  # 结构化报告（含全量 sha256 清单）
+python tests/security_audit.py --strict           # 有 HIGH 时退出 1，用于 CI 卡口
+```
+
+检查项：
+
+1. 非 PHP 文件混入 PHP 标签（图片马 / JS 后门）
+2. 图片、字体文件尾部夹带可执行文本
+3. PHP 模板里的动态执行、命令执行、反序列化等危险调用
+4. 外部 URL 域名清单，区分「运行时会发起请求」与「仅注释 / 文档」
+5. 输出型 HTML 里的固定长十六进制指纹（隐藏授权 / 追踪标记）
+6. `target="_blank"` 缺 `noopener`（tabnabbing）
+7. `href` / `src` 属性直接输出后台设置值且未做协议白名单
+8. 全量文件 sha256，用于两次发布之间的完整性比对
+
+### 外链策略
+
+- 主题默认**不向任何第三方域名发起请求**（唯一例外是可在后台配置、留空即用 Cravatar 的头像镜像）。
+- 所有写进 `href` / `src` / `poster` 的值统一走 `duxSafeUrl()`（只放行 http(s)、剔除控制字符与非法主机名）
+  + `duxEsc()`（HTML 转义），同时挡住协议注入与属性闭合。
+- 演播室片源、封面、头像镜像、Logo、favicon、CDN 前缀都是后台可配置项，默认值安全。
+- 所有 `target="_blank"` 都带 `rel="noopener noreferrer"`。
+
+### 后台可填 HTML 的字段（需站长自己负责）
+
+`customcss`、`logotext`、`slidercode`、`fatext`、`pagefatext`、`sidebarAD`、
+`footad`、`flinks`、`fcode`、`GoogleAnalytics` 按设计**原样输出**到页面，只有管理员能写。
+
+请勿粘贴来路不明的统计代码或第三方脚本；填写前后各跑一次
+`security_audit.py` 与 `http_regression.py`。这些字段是「站长自己的选择」，不是主题的默认行为。
+
 ## 部署建议（Docker 镜像）
 
 官方 `joyqi/typecho:nightly-php8.2-apache` 与 `nightly-php8.2-fpm` 的 PHP 扩展、
@@ -64,7 +101,7 @@ Typecho 代码、`opcache` 完全一致，差别只在 Web 服务器层：
 ## 已知限制
 
 - 主题会自动给 `contents` 表加 `views` 列；只读数据库或无 `ALTER` 权限时阅读数固定显示 0，不影响页面。
-- `page_live.php` 内的演示视频来自公开测试片源，可在后台替换为自己的内容。
+- 演播室默认不播放任何外部视频；如需演示片源，在「主题设置 → 演播室片源地址」填自己的 http(s) 直链。
 - 头像默认走 Cravatar 镜像，可在「主题设置 → 头像镜像地址」换成其他兼容 Gravatar 的服务。
 
 > 本主题仅基于爱好修改，使用时请尊重原作者大前端版权。

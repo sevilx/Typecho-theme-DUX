@@ -51,11 +51,23 @@ function duxAssetUrl($path)
         . '?ver=' . DUX_VERSION;
 }
 
-/** 只放行 http(s) 外链，阻断 javascript:/data: 等协议 */
+/**
+ * 外链白名单：只放行 http(s)，并剔除控制字符与非法主机名。
+ * 所有写入 href / src / poster 属性的值都必须先过这里，
+ * 再过 duxEsc()，才能同时挡住「协议注入」与「属性闭合」两类 XSS。
+ */
 function duxSafeUrl($url)
 {
-    $url = trim((string) $url);
-    return preg_match('#^https?://#i', $url) ? $url : '';
+    $url = preg_replace('/[\x00-\x20\x7F]+/', '', trim((string) $url));
+    if ($url === '' || strlen($url) > 2048) {
+        return '';
+    }
+    // 主机名只允许 RFC 3986 常见字符；javascript: / data: / vbscript: 一律拒绝
+    // 分隔符是 #，正则里的 # 必须转义，否则模式会被提前截断
+    if (!preg_match('#^https?://[A-Za-z0-9._~%\-]+(?::\d+)?(?:/|\?|\#|$)#i', $url)) {
+        return '';
+    }
+    return $url;
 }
 
 /**
@@ -66,7 +78,8 @@ function duxSafeUrl($url)
  */
 function duxAvatarUrl($mail, $size = 50, $rating = 'G')
 {
-    $mirror = trim((string) duxOptions()->avatarMirror);
+    // 后台填写的镜像地址同样走协议白名单，非法值安静回退到默认的 Cravatar
+    $mirror = duxSafeUrl(duxOptions()->avatarMirror);
     $base = $mirror === '' ? 'https://cravatar.cn/avatar' : rtrim($mirror, '/');
     return duxEsc($base . '/' . md5(strtolower(trim((string) $mail)))
         . '?s=' . (int) $size . '&r=' . rawurlencode((string) $rating) . '&d=mm');
@@ -147,7 +160,7 @@ function themeConfig($form)
     $form->addInput($categorymenu);
 
     $fatext = duxFormElement('Textarea', 'fatext', NULL, NULL, _t('顶部导航栏分类fa图标'),
-        _t('顶部导航栏分类fa图标，&lt;i class="fa fa-plug"&gt;&lt;/i&gt; 格式一行一个<br>和导航条分类菜单项按顺序匹配,用法参见<a href="http://www.fontawesome.com.cn/faicons/" target="_blank">FA图标CSS分类参考</a>'));
+        _t('顶部导航栏分类fa图标，&lt;i class="fa fa-plug"&gt;&lt;/i&gt; 格式一行一个<br>和导航条分类菜单项按顺序匹配,用法参见<a href="http://www.fontawesome.com.cn/faicons/" target="_blank" rel="noopener noreferrer nofollow">FA图标CSS分类参考</a>'));
     $form->addInput($fatext);
 
     $pagemenu = duxFormElement('Radio', 'pagemenu',
@@ -156,7 +169,7 @@ function themeConfig($form)
     $form->addInput($pagemenu);
 
     $pagefatext = duxFormElement('Textarea', 'pagefatext', NULL, NULL, _t('顶部导航栏独立页面fa图标'),
-        _t('顶部导航栏独立页面fa图标，&lt;i class="fa fa-plug"&gt;&lt;/i&gt; 格式一行一个<br>和导航条独立页面项按顺序匹配,用法参见<a href="http://www.fontawesome.com.cn/faicons/" target="_blank">FA图标CSS分类参考</a>'));
+        _t('顶部导航栏独立页面fa图标，&lt;i class="fa fa-plug"&gt;&lt;/i&gt; 格式一行一个<br>和导航条独立页面项按顺序匹配,用法参见<a href="http://www.fontawesome.com.cn/faicons/" target="_blank" rel="noopener noreferrer nofollow">FA图标CSS分类参考</a>'));
     $form->addInput($pagefatext);
 
     $tuijian = duxFormElement('Text', 'tj_cid', NULL, NULL, _t('置顶展示'), _t('请输入要置顶展示文章的cid'));
@@ -236,8 +249,18 @@ function themeConfig($form)
     $form->addInput($fcode);
     $miitbeian = duxFormElement('Text', 'miitbeian', NULL, NULL, _t('备案号'), _t('填写你的备案号，留空则不显示'));
     $form->addInput($miitbeian);
-    $GoogleAnalytics = duxFormElement('Textarea', 'GoogleAnalytics', NULL, NULL, _t('统计代码'), _t('填写你的各种跟踪统计代码，相当于页尾代码'));
+    $GoogleAnalytics = duxFormElement('Textarea', 'GoogleAnalytics', NULL, NULL, _t('统计代码'), _t('填写你的各种跟踪统计代码，相当于页尾代码；此项会原样输出到页面，请只填自己可信的代码'));
     $form->addInput($GoogleAnalytics);
+
+    // 演播室：默认关闭一切外部片源，需要时由站长自己填 http(s) 直链
+    $liveVideoUrl = duxFormElement('Text', 'liveVideoUrl', NULL, '',
+        _t('演播室片源地址'),
+        _t('留空则不加载任何外部视频；填写 http(s) 视频直链后才会播放。默认关闭，避免向第三方 CDN 暴露访客 IP'));
+    $form->addInput($liveVideoUrl);
+    $livePosterUrl = duxFormElement('Text', 'livePosterUrl', NULL, '',
+        _t('演播室封面地址'),
+        _t('留空使用主题内置封面图；同样仅接受 http(s) 地址'));
+    $form->addInput($livePosterUrl);
 }
 
 
@@ -344,7 +367,14 @@ function get_post_view($archive)
             ? \Typecho\Cookie::get('extend_contents_views')
             : Typecho_Cookie::get('extend_contents_views');
 
-        $visited = array_values(array_filter(explode(',', (string) $cookie), 'strlen'));
+        // Cookie 由访客浏览器提供，必须校验：只保留纯数字 cid、限长 30 条，
+        // 否则伪造的超长值会随每个请求头回传，撑大带宽并污染计数。
+        $visited = array_slice(array_values(array_filter(
+            array_map('trim', explode(',', (string) $cookie)),
+            function ($v) {
+                return $v !== '' && ctype_digit($v) && strlen($v) <= 10;
+            }
+        )), -30);
 
         if (!in_array((string) $cid, $visited, true)) {
             try {
@@ -505,7 +535,7 @@ function slout()
 
     $text = !empty($options->slidercode)
         ? (string) $options->slidercode
-        : '<a target="_blank" href="https://github.com/hiCasper/Typecho-theme-DUX"><img src="'
+        : '<a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/hiCasper/Typecho-theme-DUX"><img src="'
             . duxEsc($themeUrl . '/img/banner.jpg') . '"></a>';
 
     // 兼容 Windows / Unix 换行，丢弃空行，避免出现空的幻灯片项

@@ -3,17 +3,16 @@
 <html>
 <head>
     <meta charset="<?php $this->options->charset(); ?>">
-    <meta name="auth" content="a1a3170911eaa82c07fccbcbdf61f6bb"/>
 <?php if ($this->options->DnsPrefetch == "able"): ?>
     <meta http-equiv="x-dns-prefetch-control" content="on">
-<?php if ($this->options->cdn_add): ?>
-    <link rel="dns-prefetch" href="<?php $this->options->cdn_add(); ?>" />
+<?php $duxCdn = duxSafeUrl($this->options->cdn_add); if ($duxCdn !== ''): ?>
+    <link rel="dns-prefetch" href="<?php echo duxEsc($duxCdn); ?>" />
 <?php endif; ?>
 <?php endif; ?>
     <title><?php $this->archiveTitle(array('category'=>_t(' %s '),'search'=>_t(' %s '),'tag'=>_t(' %s '),'author'=>_t(' %s ')),'',' - ');?> <?php $this->options->title();?> - <?php $this->options->description() ?></title>
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0">
-    <link rel="shortcut icon" href="<?php if ($this->options->icoUrl): ?><?php $this->options->icoUrl(); ?><?php else: ?><?php echo duxEsc(duxAssetUrl('img/favicon.ico')); ?><?php endif; ?>">
+    <link rel="shortcut icon" href="<?php $duxIco = duxSafeUrl($this->options->icoUrl); echo $duxIco !== '' ? duxEsc($duxIco) : duxEsc(duxAssetUrl('img/favicon.ico')); ?>">
     <meta name="apple-mobile-web-app-title" content="<?php $this->options->title();?>">
     <meta http-equiv="Cache-Control" content="no-siteapp">
     <meta http-equiv="Cache-Control" content="no-transform">
@@ -72,7 +71,7 @@ if ($this->user->hasLogin()) {
         <div class="container">
             <h1 class="logo">
 <?php if (!empty($this->options->logoUrl)): ?>
-                <a href="<?php $this->options->siteUrl(); ?>"><img src="<?php $this->options->logoUrl(); ?>" alt="<?php $this->options->title();?>" /></a>
+                <a href="<?php $this->options->siteUrl(); ?>"><img src="<?php $duxLogo = duxSafeUrl($this->options->logoUrl); echo duxEsc($duxLogo !== '' ? $duxLogo : duxAssetUrl('img/logo.png')); ?>" alt="<?php $this->options->title();?>" /></a>
 <?php else: ?>
                 <a href="<?php $this->options->siteUrl(); ?>"><img src="<?php echo duxEsc(duxAssetUrl('img/logo.png')); ?>" alt="<?php $this->options->title();?>" /><?php $this->options->title();?></a>
 <?php endif; ?>
@@ -113,7 +112,7 @@ if ($this->user->hasLogin()) {
 <?php endif; ?>
 
                 <li class="navto-search">
-                    <a href="javascript:;" class="search-show active"><i class="fa fa-search"></i></a>
+                    <a href="#" rel="nofollow" class="search-show active"><i class="fa fa-search"></i></a>
                 </li>
             </ul>
             <i class="fa fa-bars m-icon-nav"></i>

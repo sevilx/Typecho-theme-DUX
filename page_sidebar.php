@@ -41,8 +41,12 @@
         $maxi = (int) floor(count($sad1) / 3);
         for ($i = 1; $i <= $maxi; $i++) {
             $icss = ($i % 2) + 1;
+            // 推荐位第一行是链接：先过 http(s) 白名单，再过 HTML 转义；
+            // 非法协议一律降级为 # ，避免 javascript:/data: 造成存储型 XSS
+            $href = duxSafeUrl($sad1[$i * 3 - 3]);
             echo '<div class="widget widget_ui_textasb"><a class="style0' . $icss . '" href="'
-                . duxEsc($sad1[$i * 3 - 3]) . '" target="_blank" rel="nofollow"><strong>最新推荐</strong><h2>'
+                . duxEsc($href !== '' ? $href : '#')
+                . '" target="_blank" rel="nofollow noopener noreferrer"><strong>最新推荐</strong><h2>'
                 . duxEsc($sad1[$i * 3 - 2]) . '</h2><p>' . duxEsc($sad1[$i * 3 - 1]) . '</p></a></div>';
         }
     ?>

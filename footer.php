@@ -49,10 +49,9 @@ if ($jsuiJson === false) {
             <div class="copyright">
                 <p>
                     &copy; 2010 - <?php echo date("Y"); ?> <a href="<?php $this->options->siteUrl(); ?>"><?php $this->options->title();?></a>
-                    <?php if($this->options->miitbeian): ?> | <a href="http://beian.miit.gov.cn/" target="_blank" rel="noopener nofollow"><?php $this->options->miitbeian(); ?></a><?php endif; ?>
+                    <?php if($this->options->miitbeian): ?> | <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer nofollow"><?php $this->options->miitbeian(); ?></a><?php endif; ?>
                     <br>
-                    <!--Powered by <a href="http://www.typecho.org/" target="_blank">Typecho</a> |
-                    Theme <a href="https://github.com/hiCasper/Typecho-theme-DUX" target="_blank">DUX</a>-->
+                    <!-- Powered by Typecho | Theme DUX, forked from https://github.com/hiCasper/Typecho-theme-DUX -->
                     本站部分图片、文章来源于网络，版权归原作者所有，如有侵权，请联系我们删除。
                 </p>
             </div>
@@ -67,7 +66,7 @@ if ($jsuiJson === false) {
     </script>
     <script type='text/javascript' src='<?php echo duxEsc(duxAssetUrl('css/bootstrap.min.js')); ?>'></script>
     <script type='text/javascript' src='<?php echo duxEsc(duxAssetUrl('js/loader.js')); ?>'></script>
-    <!-- Analytics code -->
+    <!-- Analytics code：仅输出后台「统计代码」里由站长自己填写的内容，留空即无任何第三方请求 -->
 <?php if($this->options->GoogleAnalytics): ?>
     <?php $this->options->GoogleAnalytics(); ?>
 <?php endif; ?>
