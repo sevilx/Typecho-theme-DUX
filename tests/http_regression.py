@@ -48,6 +48,12 @@ ASSET_EXT = re.compile(
 # Paths that are always probed even when the homepage does not link to them.
 FIXED_PROBES = ("/", "/page/2/", "/feed/", "/search/typecho/", "/__dux_404_probe__/")
 
+# 后台、外链跳转、动作接口不输出主题布局（没有 #footer / window.jsui），
+# 不能用主题完整性去判定。尤其 /go/<base64> 会 301 到任意站外甚至内网地址，
+# 盲目跟随会让只读回归变成"主动访问第三方/内网"，既误报又不安全。
+NON_THEME_PATHS = re.compile(r"^/(?:admin|go|action|install|xmlrpc)(?:/|$)", re.I)
+REDIRECT_CODES = (301, 302, 303, 307, 308)
+
 
 def strip_noise(html: str) -> str:
     html = re.sub(r"<pre\b[^>]*>.*?</pre\s*>", " ", html, flags=re.I | re.S)
@@ -133,10 +139,28 @@ def collect_assets(html: str, base: str) -> list[str]:
 
 def check_page(session: requests.Session, url: str) -> dict:
     t0 = time.perf_counter()
+    origin_host = urlparse(url).netloc
     try:
-        r = session.get(url, timeout=TIMEOUT, allow_redirects=True)
+        r = session.get(url, timeout=TIMEOUT, allow_redirects=False)
     except Exception as exc:
         return {"url": url, "error": str(exc), "ok": False}
+
+    # 只跟随同站跳转；站外/内网目标只记录 Location，绝不真正发起请求
+    hops = 0
+    while r.status_code in REDIRECT_CODES and hops < 3:
+        target = urljoin(url, r.headers.get("Location", ""))
+        if urlparse(target).netloc != origin_host:
+            return {
+                "url": url,
+                "status": r.status_code,
+                "ms": round((time.perf_counter() - t0) * 1000, 1),
+                "bytes": len(r.content),
+                "ok": True,
+                "skipped": "external redirect (not followed)",
+                "redirect_to": target,
+            }
+        r = session.get(target, timeout=TIMEOUT, allow_redirects=False)
+        hops += 1
 
     html = r.text
     ctype = r.headers.get("Content-Type", "")
@@ -157,7 +181,10 @@ def check_page(session: requests.Session, url: str) -> dict:
         "has_jsui": "window.jsui" in html,
         "php_errors": scan_errors(html),
     }
-    if r.status_code == 404:
+    if NON_THEME_PATHS.search(urlparse(url).path):
+        result["ok"] = 200 <= r.status_code < 400 and not result["php_errors"]
+        result["note"] = "non-theme route: layout checks skipped"
+    elif r.status_code == 404:
         # A 404 is expected for the probe; record an empty body as a warning.
         result["ok"] = True
         result["warning"] = "404 body is empty" if result["empty_body"] else ""
@@ -225,6 +252,10 @@ def main() -> int:
             note = "  << PHP: " + "; ".join(p["php_errors"])[:110]
         elif p.get("warning"):
             note = "  << WARNING: " + p["warning"]
+        elif p.get("skipped"):
+            note = "  << SKIP: " + p["skipped"] + " -> " + p.get("redirect_to", "")
+        elif p.get("note"):
+            note = "  << " + p["note"]
         elif not p.get("ok"):
             note = "  << incomplete HTML (missing </html> or #footer)"
         print("%-5s %-5s %-8s %-8s %s%s" % (
@@ -244,6 +275,10 @@ def main() -> int:
         "assets": len(asset_results),
         "assets_failed": len(bad_assets),
         "warnings": [p["url"] + ": " + p["warning"] for p in warnings],
+        "external_redirects": [
+            {"from": p["url"], "to": p["redirect_to"]}
+            for p in pages if p.get("redirect_to")
+        ],
         "latency_ms_avg": round(sum(times) / len(times), 1) if times else None,
         "latency_ms_p95": times[min(len(times) - 1, int(len(times) * 0.95))] if times else None,
         "latency_ms_max": max(times) if times else None,
