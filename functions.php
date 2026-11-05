@@ -14,6 +14,11 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *     避免与 1.3.1 的 antiSpam 脚本产生双 "_" 字段导致校验失败。
  */
 
+/** 主题版本号：静态资源缓存 bust 与 AMD 模块 urlArgs 共用同一个值 */
+if (!defined('DUX_VERSION')) {
+    define('DUX_VERSION', '1.3.2');
+}
+
 /** 读取当前 Typecho 版本号，兼容命名空间版与旧版 */
 function duxTypechoVersion()
 {
@@ -36,6 +41,35 @@ function duxIsModernTypecho()
 function duxEsc($value)
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
+/** 带版本号的静态资源 URL，避免主题升级后浏览器一直命中旧缓存 */
+function duxAssetUrl($path)
+{
+    $options = duxOptions();
+    return rtrim((string) $options->themeUrl, '/') . '/' . ltrim((string) $path, '/')
+        . '?ver=' . DUX_VERSION;
+}
+
+/** 只放行 http(s) 外链，阻断 javascript:/data: 等协议 */
+function duxSafeUrl($url)
+{
+    $url = trim((string) $url);
+    return preg_match('#^https?://#i', $url) ? $url : '';
+}
+
+/**
+ * 头像地址集中生成。
+ * 默认使用国内可达的 Cravatar 镜像（原 cn.gravatar.com 已长期不可用），
+ * 可在主题设置 avatarMirror 中换成任意兼容 Gravatar 的服务，留空即用默认值。
+ * 返回值已经过 HTML 转义，可直接输出到属性中。
+ */
+function duxAvatarUrl($mail, $size = 50, $rating = 'G')
+{
+    $mirror = trim((string) duxOptions()->avatarMirror);
+    $base = $mirror === '' ? 'https://cravatar.cn/avatar' : rtrim($mirror, '/');
+    return duxEsc($base . '/' . md5(strtolower(trim((string) $mail)))
+        . '?s=' . (int) $size . '&r=' . rawurlencode((string) $rating) . '&d=mm');
 }
 
 /** Widget 工厂：优先新命名空间，回退旧类名 */
@@ -182,6 +216,11 @@ function themeConfig($form)
     $authordesc = duxFormElement('Text', 'authordesc', null, NULL, _t('作者简介'), _t('文章页的作者说明'));
     $form->addInput($authordesc);
 
+    // 头像镜像（原 cn.gravatar.com 已不可用，留空使用 cravatar.cn）
+    $avatarMirror = duxFormElement('Text', 'avatarMirror', NULL, NULL, _t('头像镜像地址'),
+        _t('留空使用 Cravatar (https://cravatar.cn/avatar)；也可填任意兼容 Gravatar 的服务根地址，不要带结尾斜杠'));
+    $form->addInput($avatarMirror->addRule('xssCheck', _t('请不要在链接中使用特殊字符')));
+
     // 代码高亮设置
     $useHighline = duxFormElement('Radio', 'useHighline',
         array('able' => _t('启用'), 'disable' => _t('禁止')),
@@ -222,71 +261,83 @@ function parseContent($obj)
     echo trim($content);
 }
 
-/** 文章阅读次数统计 */
-function get_post_view($archive)
+/**
+ * 确保 contents 表存在主题自建的 views 列。
+ * 单个请求内只执行一次；建列失败（只读库、无 ALTER 权限）时安静降级。
+ */
+function duxEnsureViewsColumn()
 {
-    static $viewsAvailable = null;
-
-    $cid = (int) $archive->cid;
     $db = duxDb();
 
-    if ($viewsAvailable === null) {
-        /*
-         * 必须用 SELECT * 判断列是否真实存在。
-         * 不能写成 $db->select('views')：SQLite 会把不存在的双引号标识符
-         * 降级为字符串字面量，返回 array('views' => 'views')，导致误判为
-         * 「列已存在」并跳过建表，随后的 UPDATE 会抛 no such column 而整页 500。
-         */
-        $probeAvailable = function () use ($db) {
-            try {
-                $probe = $db->fetchRow($db->select('*')->from('table.contents')->limit(1));
-                return is_array($probe) && array_key_exists('views', $probe);
-            } catch (\Throwable $e) {
-                return false;
-            }
-        };
-
-        $viewsAvailable = $probeAvailable();
-
-        if (!$viewsAvailable) {
-            try {
-                /*
-                 * @ 用来压住底层适配器在「只读库 / 无 ALTER 权限」时抛出的 PHP
-                 * warning：否则在开启 display_errors 的环境里，警告会被插进
-                 * 「阅读(0)」的 HTML 中，并反复写入 error_log。异常仍由下面的
-                 * catch 接管，降级行为不受影响。
-                 * 第二个参数显式指定写库操作，避免主从分离时被发到只读从库。
-                 */
-                @$db->query(
-                    'ALTER TABLE `' . $db->getPrefix() . 'contents` ADD `views` INT(10) NOT NULL DEFAULT 0',
-                    $db::WRITE
-                );
-            } catch (\Throwable $ignored) {
-                // 权限不足或适配器不支持时，下面会复查并安静降级
-            }
-            // DDL 之后必须重新确认；建列失败就彻底停用计数，绝不让页面 500
-            $viewsAvailable = $probeAvailable();
+    $probe = function () use ($db) {
+        try {
+            /*
+             * 必须用 SELECT * 判断列是否真实存在。
+             * 不能写成 $db->select('views')：SQLite 会把不存在的双引号标识符
+             * 降级为字符串字面量，返回 array('views' => 'views')，导致误判。
+             */
+            $row = $db->fetchRow($db->select('*')->from('table.contents')->limit(1));
+            return is_array($row) && array_key_exists('views', $row);
+        } catch (\Throwable $e) {
+            return false;
         }
-    }
+    };
 
-    if (!$viewsAvailable) {
-        echo 0;
-        return;
+    if ($probe()) {
+        return true;
     }
 
     try {
-        $row = $db->fetchRow($db->select('views')->from('table.contents')->where('cid = ?', $cid));
-    } catch (\Throwable $e) {
+        /*
+         * @ 用来压住底层适配器在「只读库 / 无 ALTER 权限」时抛出的 PHP warning，
+         * 第二个参数显式指定写库操作，避免主从分离时被发到只读从库。
+         */
+        @$db->query(
+            'ALTER TABLE `' . $db->getPrefix() . 'contents` ADD `views` INT(10) NOT NULL DEFAULT 0',
+            $db::WRITE
+        );
+    } catch (\Throwable $ignored) {
+        // 权限不足或适配器不支持时，下面会复查并安静降级
+    }
+
+    return $probe();
+}
+
+/**
+ * 输出文章阅读次数。
+ *
+ * Typecho 1.3 的 \Widget\Base\Contents::filter() 保留数据库返回的全部列，
+ * 因此主题自建的 views 列已经在当前 row 中，无需为列表里的每篇文章
+ * 再单独发一次 SELECT（旧实现是典型的 N+1 查询）。
+ */
+function get_post_view($archive)
+{
+    static $columnChecked = false;
+    static $cache = array();
+
+    $cid = (int) $archive->cid;
+    if ($cid <= 0) {
         echo 0;
         return;
     }
 
-    if (!is_array($row) || !array_key_exists('views', $row)) {
-        echo 0;
+    // 同一请求内同一篇文章只计算一次，兼顾重复渲染与防重复计数
+    if (array_key_exists($cid, $cache)) {
+        echo $cache[$cid];
         return;
     }
 
-    $views = (int) $row['views'];
+    $rowViews = $archive->views;
+    if ($rowViews === null || !is_numeric($rowViews)) {
+        if (!$columnChecked) {
+            $columnChecked = true;
+            duxEnsureViewsColumn();
+        }
+        // 本次请求的 row 已构建完成，新建的列默认值为 0，下个请求即可直接读到
+        $views = 0;
+    } else {
+        $views = (int) $rowViews;
+    }
 
     if ($archive->is('single')) {
         $cookie = \class_exists('Typecho\Cookie')
@@ -297,6 +348,7 @@ function get_post_view($archive)
 
         if (!in_array((string) $cid, $visited, true)) {
             try {
+                $db = duxDb();
                 @$db->query($db->update('table.contents')
                     ->rows(array('views' => $views + 1))
                     ->where('cid = ?', $cid), $db::WRITE);
@@ -314,22 +366,29 @@ function get_post_view($archive)
         }
     }
 
+    $cache[$cid] = $views;
     echo $views;
 }
 
-/** Typecho 24 小时发布文章数量 */
+/** Typecho 指定天数内发布的文章数量（使用站点时区时间，不再硬编码 UTC+8） */
 function get_recent_posts_number($days = 1, $display = true)
 {
     $db = duxDb();
-    $today = time() + 3600 * 8;
-    $daysago = $today - ($days * 24 * 60 * 60);
+    $now = (int) duxOptions()->time;
+    $from = $now - ((int) $days * 86400);
 
-    $result = $db->fetchObject($db->select(array('COUNT(cid)' => 'num'))
-        ->from('table.contents')
-        ->orWhere('created < ? AND created > ?', $today, $daysago)
-        ->where('type = ? AND status = ? AND password IS NULL', 'post', 'publish'));
-
-    $total = is_object($result) ? (int) ($result->num ?? 0) : 0;
+    try {
+        $result = $db->fetchObject($db->select(array('COUNT(cid)' => 'num'))
+            ->from('table.contents')
+            ->where('created >= ?', $from)
+            ->where('created <= ?', $now)
+            ->where('type = ?', 'post')
+            ->where('status = ?', 'publish')
+            ->where("password IS NULL OR password = ''"));
+        $total = is_object($result) ? (int) ($result->num ?? 0) : 0;
+    } catch (\Throwable $e) {
+        $total = 0;
+    }
 
     if ($display) {
         echo $total;
@@ -340,6 +399,13 @@ function get_recent_posts_number($days = 1, $display = true)
 /** 缩略图：优先附件 -> 正文首图 -> 自定义默认图 -> 内置随机图 */
 function showThumb($obj, $size = null, $link = false)
 {
+    static $cache = array();
+
+    $cid = isset($obj->cid) ? (int) $obj->cid : 0;
+    if ($cid > 0 && array_key_exists($cid, $cache)) {
+        return $cache[$cid];
+    }
+
     $options = duxOptions();
     $thumb = '';
 
@@ -371,6 +437,11 @@ function showThumb($obj, $size = null, $link = false)
         $thumb = !empty($options->default_thumb)
             ? (string) $options->default_thumb
             : rtrim((string) $options->themeUrl, '/') . '/img/thumb/' . rand(1, 25) . '.jpg';
+    }
+
+    // 缓存后同一篇文章在首页/侧边栏/相关推荐里显示同一张随机图，避免抖动
+    if ($cid > 0) {
+        $cache[$cid] = $thumb;
     }
 
     // $link 仅为兼容旧调用保留；始终返回地址，调用方负责输出

@@ -10,10 +10,19 @@ if (empty($roll)) {
 $jsui = array(
     'www'       => (string) $this->options->siteUrl,
     'uri'       => rtrim((string) $this->options->themeUrl, '/'),
-    'ver'       => '1.3.1',
+    'ver'       => DUX_VERSION,
     'roll'      => $roll,
     'ajaxpager' => ($this->options->infpage == 'disable') ? 0 : 1,
 );
+// HEX_* 防止站点地址里的 </script>、引号等字符提前闭合脚本块
+$jsuiJson = json_encode(
+    $jsui,
+    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+    | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+);
+if ($jsuiJson === false) {
+    $jsuiJson = '{"www":"","uri":"","ver":"' . DUX_VERSION . '","roll":[1],"ajaxpager":0}';
+}
 ?>
 
     <!--footer-->
@@ -40,7 +49,7 @@ $jsui = array(
             <div class="copyright">
                 <p>
                     &copy; 2010 - <?php echo date("Y"); ?> <a href="<?php $this->options->siteUrl(); ?>"><?php $this->options->title();?></a>
-                    <?php if($this->options->miitbeian): ?> | <a href="http://beian.miit.gov.cn/" target="_blank" rel="nofollow"><?php $this->options->miitbeian(); ?></a><?php endif; ?>
+                    <?php if($this->options->miitbeian): ?> | <a href="http://beian.miit.gov.cn/" target="_blank" rel="noopener nofollow"><?php $this->options->miitbeian(); ?></a><?php endif; ?>
                     <br>
                     <!--Powered by <a href="http://www.typecho.org/" target="_blank">Typecho</a> |
                     Theme <a href="https://github.com/hiCasper/Typecho-theme-DUX" target="_blank">DUX</a>-->
@@ -51,13 +60,13 @@ $jsui = array(
         </div>
     </footer>
 <?php if ($this->options->useHighline == 'able'): ?>
-    <script src="<?php $this->options->themeUrl('css/highlight.min.js'); ?>"></script>
+    <script src="<?php echo duxEsc(duxAssetUrl('css/highlight.min.js')); ?>"></script>
 <?php endif; ?>
     <script>
-        window.jsui = <?php echo json_encode($jsui, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+        window.jsui = <?php echo $jsuiJson; ?>;
     </script>
-    <script type='text/javascript' src='<?php $this->options->themeUrl('css/bootstrap.min.js'); ?>'></script>
-    <script type='text/javascript' src='<?php $this->options->themeUrl('js/loader.js'); ?>'></script>
+    <script type='text/javascript' src='<?php echo duxEsc(duxAssetUrl('css/bootstrap.min.js')); ?>'></script>
+    <script type='text/javascript' src='<?php echo duxEsc(duxAssetUrl('js/loader.js')); ?>'></script>
     <!-- Analytics code -->
 <?php if($this->options->GoogleAnalytics): ?>
     <?php $this->options->GoogleAnalytics(); ?>

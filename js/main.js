@@ -217,10 +217,7 @@ $(window).scroll(function() {
  * bootstrap
  * ====================================================
 */
-$('.user-welcome').tooltip({
-    container: 'body',
-    placement: 'bottom'
-})
+/* .user-welcome 属于 WordPress 版会员模块，Typecho 版不输出该 DOM，移除无效 tooltip 初始化 */
 
 
 /* 
@@ -281,10 +278,8 @@ if (_wid>1024 && _sidebar.length) {
 
 
 
-$('.plinks a').each(function(){
-    var imgSrc = $(this).attr('href')+'/favicon.ico'
-    $(this).prepend( '<img src="'+imgSrc+'">' )
-})
+/* .plinks 是 WordPress 版友链模块，Typecho 版无此 DOM；
+   原逻辑会给每个外站拼 /favicon.ico 并发请求，已移除 */
 
 
 /* 
@@ -406,9 +401,7 @@ $('.m-mask').on('click', function(){
 
 
 
-if ($('.article-content').length){
-    $('.article-content img').attr('data-tag', 'bdshare')
-}
+/* data-tag=bdshare 只服务于已下线的百度分享组件，不再给正文图片加无用属性 */
 
 
 video_ok()
@@ -435,7 +428,9 @@ function video_ok(){
  * baidushare
  * ====================================================
 */
-if( $('.bdsharebuttonbox').length ){
+/* 百度分享已下线：主题从未输出 .bdsharebuttonbox，bdimg.share.baidu.com 亦不可用。
+   整个分支短路保留仅作历史参考，不再加载任何外部脚本。 */
+if (false) {
 
     if ($('.article-content').length) $('.article-content img').data('tag', 'bdshare')
 
@@ -469,8 +464,7 @@ if( $('.bdsharebuttonbox').length ){
         }*/
     }
 
-    // 使用协议相对地址，避免在 HTTPS 站点上被浏览器拦截为混合内容
-    with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='//bdimg.share.baidu.com/static/api/js/share.js?cdnversion='+~(-new Date()/36e5)];
+    // 原外链注入已移除：不再向 bdimg.share.baidu.com 发起请求
 }
 
 

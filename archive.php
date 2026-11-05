@@ -15,7 +15,8 @@
 <?php while($this->next()): ?>
                 <article class="excerpt">
 <?php if ($this->options->indexpic == 'able'): ?>
-                    <a class="focus" href="<?php $this->permalink() ?>"><img src="<?php $this->options->themeUrl('img/thumbnail.png'); ?>" data-src="<?php echo duxEsc(showThumb($this)); ?>" class="thumb"></a>
+                    <?php $thumb = duxEsc(showThumb($this)); ?>
+                    <a class="focus" href="<?php $this->permalink() ?>"><img src="<?php echo $thumb; ?>" data-src="<?php echo $thumb; ?>" class="thumb" loading="lazy" decoding="async" alt="<?php echo duxEsc($this->title); ?>"></a>
 <?php endif; ?>
                     <header>
                         <a class="cat"><?php $this->category(',',false); ?><i></i></a>

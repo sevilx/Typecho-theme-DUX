@@ -48,7 +48,7 @@
     ?>
 <?php endif; ?>
 <?php if (!empty($this->options->sidebarBlock) && in_array('ShowRecentComments', $this->options->sidebarBlock)): ?>
-    <div class="ds-recent-comments" data-num-items="5" data-show-avatars="1" data-show-time="1" data-show-title="1" data-show-admin="1" data-excerpt-length="70"></div>
+    <!-- 多说(duoshuo) 评论挂件已下线，原占位 DIV 移除 -->
     <div class="widget widget_ui_comments">
         <h3>最新评论</h3>
         <ul>

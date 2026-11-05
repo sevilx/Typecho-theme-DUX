@@ -7,8 +7,10 @@
 if (!function_exists('threadedComments')) :
 function threadedComments($comments, $options)
 {
-    if ($comments->url) {
-        $author = '<a href="' . duxEsc($comments->url) . '" target="_blank" rel="external nofollow">'
+    // 只放行 http(s)，避免评论者网址里夹带 javascript: / data: 造成 XSS
+    $safeUrl = duxSafeUrl($comments->url);
+    if ($safeUrl !== '') {
+        $author = '<a href="' . duxEsc($safeUrl) . '" target="_blank" rel="external nofollow noopener">'
             . duxEsc($comments->author) . '</a>';
     } else {
         $author = duxEsc($comments->author);
@@ -17,9 +19,8 @@ function threadedComments($comments, $options)
     // $options 是 singleCommentOptions，子评论递归时还要用到，切勿覆盖
     $siteOptions = duxOptions();
     $rating = $siteOptions->commentsAvatarRating ?: 'G';
-    $hash = md5(strtolower(trim((string) $comments->mail)));
-    $avatar = '//cn.gravatar.com/avatar/' . $hash . '?s=50&r=' . rawurlencode((string) $rating) . '&d=mm';
-    $defaultAvatar = rtrim((string) $siteOptions->themeUrl, '/') . '/img/avatar-default.png';
+    $avatar = duxAvatarUrl($comments->mail, 50, $rating);
+    $defaultAvatar = duxEsc(duxAssetUrl('img/avatar-default.png'));
 ?>
     <li id="<?php $comments->theId(); ?>" class="comment byuser comment-author-admin bypostauthor depth-<?php echo ((int) $comments->levels + 1); ?> comment-body<?php
     if ($comments->levels > 0) {
@@ -30,25 +31,28 @@ function threadedComments($comments, $options)
     }
     $comments->alt(' odd', ' even');
     ?>">
-        <div class="comt-avatar"><img alt="" data-src="<?php echo duxEsc($avatar); ?>" srcset="<?php echo duxEsc($avatar); ?> 2x" class="avatar photo" height="50" width="50" src="<?php echo duxEsc($defaultAvatar); ?>"></div>
+        <div class="comt-avatar"><img alt="" data-src="<?php echo $avatar; ?>" srcset="<?php echo $avatar; ?> 2x" class="avatar photo" height="50" width="50" loading="lazy" decoding="async" src="<?php echo $defaultAvatar; ?>"></div>
         <div class="comt-main" id="div-<?php $comments->theId(); ?>">
             <?php $comments->content(); ?>
             <div class="comt-meta">
                 <span class="comt-author"><?php echo $author; ?></span> <?php $comments->date('Y-m-d'); ?>&nbsp;&nbsp;&nbsp;&nbsp;<?php $comments->reply('回复'); ?>
             </div>
         </div>
-    <?php if ($comments->children) { ?><ul class="children"><?php $comments->threadedComments($options); ?></ul><?php } ?>
+    <?php if ($comments->children) { ?><ul class="children"><?php $comments->threadedComments(); ?></ul><?php } ?>
     </li>
 <?php
 }
 endif;
 
 $this->comments()->to($comments);
-$defaultAvatar = rtrim((string) $this->options->themeUrl, '/') . '/img/avatar-default.png';
+$defaultAvatar = duxEsc(duxAssetUrl('img/avatar-default.png'));
 $loggedIn = $this->user->hasLogin();
 $rememberAuthor = $this->remember('author', true);
 $rememberMail = $this->remember('mail', true);
 $hasRemembered = ($rememberAuthor != '' && $rememberMail != '');
+$anonymousAvatar = duxAvatarUrl('', 50);
+$loggedInAvatar = duxAvatarUrl($this->user->mail, 50);
+$rememberedAvatar = duxAvatarUrl($rememberMail, 50);
 ?>
     <div class="title" id="comments">
         <h3>评论 <?php $this->commentsNum('<small></small>', '<b>1</b>', '<b>%d</b>'); ?></h3>
@@ -63,11 +67,11 @@ $hasRemembered = ($rememberAuthor != '' && $rememberMail != '');
             <div class="comt">
                 <div class="comt-title">
 <?php if($loggedIn): ?>
-                    <img alt="" data-src="//cn.gravatar.com/avatar/<?php echo md5(strtolower(trim((string) $this->user->mail))); ?>?s=50" srcset="//cn.gravatar.com/avatar/<?php echo md5(strtolower(trim((string) $this->user->mail))); ?>?s=50 2x" class="avatar photo" height="50" width="50" src="<?php echo duxEsc($defaultAvatar); ?>">
+                    <img alt="" data-src="<?php echo $loggedInAvatar; ?>" srcset="<?php echo $loggedInAvatar; ?> 2x" class="avatar photo" height="50" width="50" decoding="async" src="<?php echo $defaultAvatar; ?>">
 <?php elseif($hasRemembered): ?>
-                    <img alt="" data-src="//cn.gravatar.com/avatar/<?php echo md5(strtolower(trim((string) $rememberMail))); ?>?s=50" srcset="//cn.gravatar.com/avatar/<?php echo md5(strtolower(trim((string) $rememberMail))); ?>?s=50 2x" class="avatar photo" height="50" width="50" src="<?php echo duxEsc($defaultAvatar); ?>">
+                    <img alt="" data-src="<?php echo $rememberedAvatar; ?>" srcset="<?php echo $rememberedAvatar; ?> 2x" class="avatar photo" height="50" width="50" decoding="async" src="<?php echo $defaultAvatar; ?>">
 <?php else: ?>
-                    <img alt="" data-src="<?php echo duxEsc($defaultAvatar); ?>" srcset="<?php echo duxEsc($defaultAvatar); ?> 2x" class="avatar photo" height="50" width="50" src="<?php echo duxEsc($defaultAvatar); ?>">
+                    <img alt="" data-src="<?php echo $anonymousAvatar; ?>" srcset="<?php echo $anonymousAvatar; ?> 2x" class="avatar photo" height="50" width="50" decoding="async" src="<?php echo $defaultAvatar; ?>">
 <?php endif; ?>
                     <p><?php $comments->cancelReply('<span style="color:#FF5151"><br>取消</span>'); ?></p>
                 </div>
