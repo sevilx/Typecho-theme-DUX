@@ -16,7 +16,16 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 /** 主题版本号：静态资源缓存 bust 与 AMD 模块 urlArgs 共用同一个值 */
 if (!defined('DUX_VERSION')) {
-    define('DUX_VERSION', '1.3.2');
+    define('DUX_VERSION', '1.3.3');
+}
+
+/**
+ * 站点备案号兜底值。
+ * 后台「设置外观 → 备案号」优先；该项留空（例如主题更新后设置被重置）时使用此常量，
+ * 保证页脚备案信息不会因为配置丢失而消失。二次开发请改成自己的备案号。
+ */
+if (!defined('DUX_SITE_ICP')) {
+    define('DUX_SITE_ICP', '粤ICP备 2026163379 号');
 }
 
 /** 读取当前 Typecho 版本号，兼容命名空间版与旧版 */
@@ -247,7 +256,8 @@ function themeConfig($form)
     $form->addInput($flinks);
     $fcode = duxFormElement('Textarea', 'fcode', NULL, NULL, _t('底部小广告'), _t('该块显示在网站底部版权上方，可已定义放一些链接或者图片之类的内容。'));
     $form->addInput($fcode);
-    $miitbeian = duxFormElement('Text', 'miitbeian', NULL, NULL, _t('备案号'), _t('填写你的备案号，留空则不显示'));
+    $miitbeian = duxFormElement('Text', 'miitbeian', NULL, NULL, _t('备案号'),
+        _t('填写你的备案号；留空则自动使用主题内置的 DUX_SITE_ICP 兜底值（防止主题更新后设置丢失）'));
     $form->addInput($miitbeian);
     $GoogleAnalytics = duxFormElement('Textarea', 'GoogleAnalytics', NULL, NULL, _t('统计代码'), _t('填写你的各种跟踪统计代码，相当于页尾代码；此项会原样输出到页面，请只填自己可信的代码'));
     $form->addInput($GoogleAnalytics);

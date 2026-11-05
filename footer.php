@@ -49,7 +49,13 @@ if ($jsuiJson === false) {
             <div class="copyright">
                 <p>
                     &copy; 2010 - <?php echo date("Y"); ?> <a href="<?php $this->options->siteUrl(); ?>"><?php $this->options->title();?></a>
-                    <?php if($this->options->miitbeian): ?> | <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer nofollow"><?php $this->options->miitbeian(); ?></a><?php endif; ?>
+                    <?php
+                    // 后台设置优先；设置被清空时回退到 functions.php 的 DUX_SITE_ICP，避免备案信息丢失
+                    $duxIcp = trim((string) $this->options->miitbeian);
+                    if ($duxIcp === '') {
+                        $duxIcp = defined('DUX_SITE_ICP') ? DUX_SITE_ICP : '';
+                    }
+                    if ($duxIcp !== ''): ?> | <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer nofollow"><?php echo duxEsc($duxIcp); ?></a><?php endif; ?>
                     <br>
                     <!-- Powered by Typecho | Theme DUX, forked from https://github.com/hiCasper/Typecho-theme-DUX -->
                     本站部分图片、文章来源于网络，版权归原作者所有，如有侵权，请联系我们删除。
