@@ -8,7 +8,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
 <?php $this->need('header.php'); ?>
 
     <div class="container container-no-sidebar">
-        <div class="content">
+        <div class="content" id="dux-main" tabindex="-1">
             <header class="article-header">
                 <h1 class="article-title"><a href="<?php $this->permalink(); ?>"><?php $this->title() ?></a></h1>
             </header>

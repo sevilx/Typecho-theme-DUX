@@ -9,7 +9,7 @@
                 <ul>
 <?php $this->widget('Widget_Contents_Post_Recent','pageSize=5')->to($post); ?>
 <?php while($post->next()): ?>
-                    <li><time><?php $post->date('m-d'); ?></time><a href="<?php $post->permalink(); ?>" title="<?php $post->title(); ?>"><?php $post->title(); ?></a></li>
+                    <li><time><?php $post->date('m-d'); ?></time><a href="<?php $post->permalink(); ?>" title="<?php echo duxEsc($post->title); ?>"><?php $post->title(); ?></a></li>
 <?php endwhile; ?>
                 </ul>
             </li>
@@ -59,7 +59,7 @@
 <?php $this->widget('Widget_Comments_Recent','pageSize=7')->to($comments); ?>
 <?php while($comments->next()): ?>
             <li>
-            <a href="<?php $comments->permalink(); ?>" title="<?php $comments->title(); ?>上的评论">
+            <a href="<?php $comments->permalink(); ?>" title="<?php echo duxEsc($comments->title); ?>上的评论">
                 <strong><?php $comments->author(false); ?></strong> (<?php $comments->date('m-d'); ?>) 说：
                 <br><?php $comments->excerpt(22, '...'); ?></a></li>
 <?php endwhile; ?>

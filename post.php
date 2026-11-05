@@ -2,14 +2,14 @@
 <?php $this->need('header.php'); ?>
     <section class="container">
         <div class="content-wrap">
-            <div class="content">
+            <div class="content" id="dux-main" tabindex="-1">
                 <header class="article-header">
                     <h1 class="article-title"><a href="<?php $this->permalink(); ?>"><?php $this->title() ?></a></h1>
                     <div class="article-meta">
-                        <span class="item"><i class="fa fa-clock-o"></i><?php $this->date('Y-m-d'); ?></span>
+                        <span class="item"><i class="fa fa-clock-o" aria-hidden="true"></i><time datetime="<?php $this->date('c'); ?>"><?php $this->date('Y-m-d'); ?></time></span>
                         <span class="item"><i class="fa fa-book" aria-hidden="true"></i><?php $this->category(' / ');?></span>
-                        <span class="item post-views"><i class="fa fa-eye"></i>阅读(<?php get_post_view($this) ?>)</span>
-                        <span class="item"><i class="fa fa-comments-o"></i>评论(<?php $this->commentsNum('0', '1', '%d'); ?>)</span>
+                        <span class="item post-views"><i class="fa fa-eye" aria-hidden="true"></i>阅读(<?php get_post_view($this) ?>)</span>
+                        <span class="item"><i class="fa fa-comments-o" aria-hidden="true"></i>评论(<?php $this->commentsNum('0', '1', '%d'); ?>)</span>
                     </div>
                 </header>
                 <article class="article-content">
@@ -21,7 +21,7 @@
 <?php if($this->options->authordesc && !empty($this->options->authordesc) ): ?>
                 <div class="article-author">
                     <div class="avatar"><?php $this->author->gravatar(50, 'G'); ?></div><h4><i class="fa fa-user" aria-hidden="true"></i><?php $this->author(); ?></h4>
-                    <span><?php $this->options->authordesc(); ?></span>
+                    <span><?php echo duxEsc($this->options->authordesc); ?></span>
                 </div>
 <?php endif; ?>
                 <nav class="article-nav">
@@ -33,7 +33,7 @@
                 <div class="relates"><div class="title"><h3>相关推荐</h3></div>
                     <ul>
 <?php while($relatedPosts->next()): ?>
-                        <li><a href="<?php $relatedPosts->permalink();?>" title="<?php $relatedPosts->title();?>"><?php $relatedPosts->title();?></a></li>
+                        <li><a href="<?php $relatedPosts->permalink();?>" title="<?php echo duxEsc($relatedPosts->title); ?>"><?php echo duxEsc($relatedPosts->title); ?></a></li>
 <?php endwhile; ?>
                     </ul>
                 </div>

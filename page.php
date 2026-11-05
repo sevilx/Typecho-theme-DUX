@@ -14,7 +14,7 @@
             </div>
         </div>
 <?php endif; ?>
-        <div class="content">
+        <div class="content" id="dux-main" tabindex="-1">
             <header class="article-header">
             <h1 class="article-title"><a href="<?php $this->permalink(); ?>"><?php $this->title() ?></a></h1>
             </header>

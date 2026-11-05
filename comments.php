@@ -10,7 +10,7 @@ function threadedComments($comments, $options)
     // 只放行 http(s)，避免评论者网址里夹带 javascript: / data: 造成 XSS
     $safeUrl = duxSafeUrl($comments->url);
     if ($safeUrl !== '') {
-        $author = '<a href="' . duxEsc($safeUrl) . '" target="_blank" rel="external nofollow noopener">'
+        $author = '<a href="' . duxEsc($safeUrl) . '" target="_blank" rel="external nofollow noopener noreferrer">'
             . duxEsc($comments->author) . '</a>';
     } else {
         $author = duxEsc($comments->author);
@@ -20,7 +20,6 @@ function threadedComments($comments, $options)
     $siteOptions = duxOptions();
     $rating = $siteOptions->commentsAvatarRating ?: 'G';
     $avatar = duxAvatarUrl($comments->mail, 50, $rating);
-    $defaultAvatar = duxEsc(duxAssetUrl('img/avatar-default.png'));
 ?>
     <li id="<?php $comments->theId(); ?>" class="comment byuser comment-author-admin bypostauthor depth-<?php echo ((int) $comments->levels + 1); ?> comment-body<?php
     if ($comments->levels > 0) {
@@ -31,7 +30,7 @@ function threadedComments($comments, $options)
     }
     $comments->alt(' odd', ' even');
     ?>">
-        <div class="comt-avatar"><img alt="" data-src="<?php echo $avatar; ?>" srcset="<?php echo $avatar; ?> 2x" class="avatar photo" height="50" width="50" loading="lazy" decoding="async" src="<?php echo $defaultAvatar; ?>"></div>
+        <div class="comt-avatar"><img alt="" class="avatar photo" height="50" width="50" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="<?php echo $avatar; ?>"></div>
         <div class="comt-main" id="div-<?php $comments->theId(); ?>">
             <?php $comments->content(); ?>
             <div class="comt-meta">
@@ -45,7 +44,6 @@ function threadedComments($comments, $options)
 endif;
 
 $this->comments()->to($comments);
-$defaultAvatar = duxEsc(duxAssetUrl('img/avatar-default.png'));
 $loggedIn = $this->user->hasLogin();
 $rememberAuthor = $this->remember('author', true);
 $rememberMail = $this->remember('mail', true);
@@ -67,17 +65,18 @@ $rememberedAvatar = duxAvatarUrl($rememberMail, 50);
             <div class="comt">
                 <div class="comt-title">
 <?php if($loggedIn): ?>
-                    <img alt="" data-src="<?php echo $loggedInAvatar; ?>" srcset="<?php echo $loggedInAvatar; ?> 2x" class="avatar photo" height="50" width="50" decoding="async" src="<?php echo $defaultAvatar; ?>">
+                    <img alt="" class="avatar photo" height="50" width="50" decoding="async" referrerpolicy="no-referrer" src="<?php echo $loggedInAvatar; ?>">
 <?php elseif($hasRemembered): ?>
-                    <img alt="" data-src="<?php echo $rememberedAvatar; ?>" srcset="<?php echo $rememberedAvatar; ?> 2x" class="avatar photo" height="50" width="50" decoding="async" src="<?php echo $defaultAvatar; ?>">
+                    <img alt="" class="avatar photo" height="50" width="50" decoding="async" referrerpolicy="no-referrer" src="<?php echo $rememberedAvatar; ?>">
 <?php else: ?>
-                    <img alt="" data-src="<?php echo $anonymousAvatar; ?>" srcset="<?php echo $anonymousAvatar; ?> 2x" class="avatar photo" height="50" width="50" decoding="async" src="<?php echo $defaultAvatar; ?>">
+                    <img alt="" class="avatar photo" height="50" width="50" decoding="async" referrerpolicy="no-referrer" src="<?php echo $anonymousAvatar; ?>">
 <?php endif; ?>
                     <p><?php $comments->cancelReply('<span style="color:#FF5151"><br>取消</span>'); ?></p>
                 </div>
                 <div class="comt-box">
                     <span class="comt-user" style="font-size:14px;color:#66B3FF;"><?php if($loggedIn): ?><?php $this->user->screenName(); ?><?php elseif($hasRemembered): ?><?php echo duxEsc($rememberAuthor); ?> <a href="#" class="commnet-user-change" style="color:#999;font-size:12px;text-decoration:none" rel="nofollow">修改资料</a><?php endif; ?></span>
-                    <textarea placeholder="欢迎在此评论， be nice &amp; cool." class="input-block-level comt-area" name="text" id="comment" cols="100%" rows="3" tabindex="1" required></textarea>
+                    <label class="dux-sr-only" for="comment">评论内容</label>
+                    <textarea placeholder="欢迎在此评论， be nice &amp; cool." class="input-block-level comt-area" name="text" id="comment" cols="100%" rows="3" tabindex="1" aria-label="评论内容" required></textarea>
                     <div class="comt-ctrl">
                         <div class="comt-tips"></div>
                         <button type="submit" name="submit" id="submit" tabindex="5">提交评论</button>
@@ -92,9 +91,9 @@ $rememberedAvatar = duxAvatarUrl($rememberMail, 50);
 <?php if(!$loggedIn): ?>
                 <div class="comt-comterinfo" id="comment-author-info" <?php if($hasRemembered): ?>style="display:none;"<?php endif; ?> >
                     <ul>
-                        <li class="form-inline"><label class="hide" for="author">昵称</label><input class="ipt" type="text" name="author" id="author" value="<?php $this->remember('author'); ?>" tabindex="2" placeholder="昵称（必填）" required><span class="text-muted"></span></li>
-                        <li class="form-inline"><label class="hide" for="mail">邮箱</label><input class="ipt" type="text" name="mail" id="mail" value="<?php $this->remember('mail'); ?>" tabindex="3" placeholder="邮箱（必填）" <?php if ($this->options->commentsRequireMail): ?> required<?php endif; ?>><span class="text-muted"></span></li>
-                        <li class="form-inline"><label class="hide" for="url">网址</label><input class="ipt" type="text" name="url" id="url" value="<?php $this->remember('url'); ?>" tabindex="4" placeholder="网址"><span class="text-muted"></span></li>
+                        <li class="form-inline"><label class="dux-sr-only" for="author">昵称</label><input class="ipt" type="text" name="author" id="author" value="<?php $this->remember('author'); ?>" tabindex="2" placeholder="昵称（必填）" autocomplete="name" aria-label="昵称" required><span class="text-muted"></span></li>
+                        <li class="form-inline"><label class="dux-sr-only" for="mail">邮箱</label><input class="ipt" type="email" name="mail" id="mail" value="<?php $this->remember('mail'); ?>" tabindex="3" placeholder="邮箱（必填）" autocomplete="email" aria-label="邮箱" <?php if ($this->options->commentsRequireMail): ?> required<?php endif; ?>><span class="text-muted"></span></li>
+                        <li class="form-inline"><label class="dux-sr-only" for="url">网址</label><input class="ipt" type="text" inputmode="url" name="url" id="url" value="<?php $this->remember('url'); ?>" tabindex="4" placeholder="网址" autocomplete="url" aria-label="网址"><span class="text-muted"></span></li>
                     </ul>
                 </div>
 <?php endif; ?>

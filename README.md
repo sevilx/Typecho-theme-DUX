@@ -5,6 +5,7 @@
 
 当前分支针对 **Typecho 1.3.x 开发版（1.3.1-rc）+ PHP 8.2** 做了完整适配、回归与安全审计，
 同时保留对 Typecho 1.2+ / PHP 7.4+ 的兼容回退。
+**1.4.0** 在此基础上追加了一轮性能、视觉与安全优化（见下节），全部改动保持 DUX 原有布局与配色可回退。
 
 ## 特性
 
@@ -12,6 +13,69 @@
 - 美化了样式，修改细节，增加了一些小功能
 - 新旧 Typecho 兼容层：`duxWidget` / `duxDb` / `duxOptions` / `duxFormElement` / `duxEsc`
 - 自定义模板：文章归档、分类归档、标签云、友链、多媒体演播室、侧边栏页面
+- 1.4.0：外观增强层、深浅色模式、可配置主题色、阅读进度、代码一键复制、原生懒加载
+
+## 1.4.0 体验优化
+
+设计原则：**不改 4500 行的历史 `css/main.css`**，新增独立的 `css/dux-elegance.css` 与
+无依赖的 `js/dux-enhance.js` 作为增强层。后台「外观增强」选「禁用」即可一键回到旧版外观，
+增强层 JS 即使 RequireJS / jQuery 加载失败也不会影响主题主功能。
+
+### 后台新增配置项（设置外观）
+
+| 配置 | 取值 | 说明 |
+| --- | --- | --- |
+| `elegance` | 启用 / 禁用 | 是否加载增强层；老站点升级后无此配置时默认启用 |
+| `darkMode` | auto / light / dark / disable | 跟随系统 / 强制浅色 / 强制深色 / 不提供切换（恒浅色） |
+| `accentColor` | `#RRGGBB` | 自定义主色，派生 `--dux-accent-hover` / `-soft` / `-line`；非法值自动回退默认蓝 |
+
+深浅色由 `<head>` 内一段同步脚本在首屏渲染前写入 `data-theme`，避免闪白；
+用户选择存 `localStorage`，未选择时跟随 `prefers-color-scheme`。
+
+### 性能
+
+- 全站 JS 改 `defer`；Font Awesome 字体 `preload` + `font-display: swap`
+- 用原生 `loading="lazy"` / `decoding="async"` 取代 jQuery `lazyload`，删除 `src` + `data-src` 双写造成的重复请求
+- 所有缩略图 / Logo / banner 补 `width` / `height`，降低 CLS；首屏首图加 `fetchpriority="high"`
+- 滚动监听改 `requestAnimationFrame` 节流 + `passive: true`，只在跨越 200px 阈值时切换 rollbar
+- 静态资源统一 `?ver=1.4.0` 缓存 bust（版本号集中在 `DUX_VERSION`）
+- 移除演播室页面每次加载都向外部媒体子域发起的 `OPTIONS` 心跳（无功能、泄露访客 IP / Referer）
+
+### 视觉与可访问性
+
+- CSS 设计令牌统一颜色 / 圆角 / 阴影 / 字体栈 / 缓动；重做卡片、正文排版、代码块、表格、引用、标签、分页、评论、页脚
+- 修复原 `.comt-main { max-height: 300px; overflow: hidden }` 截断长评论
+- 补 `focus-visible` 焦点环（原 `main.css` 的 `a:focus { outline: 0 }` 抹掉了键盘焦点）、skip link、`<button>` 替代伪按钮、`aria-*` / `<time datetime>`
+- 恢复移动端缩放（移除 `user-scalable=0` / `maximum-scale=1`）
+- 阅读进度条、代码一键复制、深浅色切换按钮
+- `prefers-reduced-motion` 动效降级与 `@media print` 打印样式
+- 修正首页空站点描述时 `<title>站名 - </title>` 的悬空分隔符
+
+### 安全与隐私
+
+- 后台「可填 HTML」字段（`slidercode` / `fatext` / `footad` / `flinks` / `fcode` / `smallbanner` / `brand` 等）
+  统一经 `duxSafeHtml()` DOM 白名单清洗：移除 `script` / `iframe` / `style` 等危险标签、所有 `on*` 事件、
+  `javascript:` / `data:` 协议与危险 CSS，并给 `target="_blank"` 自动补 `noopener noreferrer`
+- `customcss` 经 `duxSafeCss()` 处理，防止 `</style>` 提前闭合注入脚本
+- 头像加 `referrerpolicy="no-referrer"`；外链补 `noopener noreferrer`；移除两处 `javascript:` 伪协议
+- 评论表单补 `autocomplete` / `aria-label` / `inputmode`，网址改为 `type="text"` 避免误拒裸域名
+- 动态属性输出统一 `duxEsc()`；`duxSafeUrl()` 保持 URL 协议白名单
+
+> **`GoogleAnalytics` 是唯一仍按原样输出的字段**：它的设计用途就是让站长放统计脚本，
+> 只有管理员能写，请勿粘贴来路不明的代码。
+
+### 验证结论（1.4.0）
+
+| 项目 | 结果 |
+| --- | --- |
+| `php -l` / `node --check` | 16 个 PHP + 17 个 JS 全部通过 |
+| `duxSafeHtml()` 白名单单测 | 10 例（XSS 拦截 + 正常排版保留）全通过 |
+| `security_audit.py` | 扫描 117 个文件，HIGH/MEDIUM/LOW 均为 0 |
+| `http_regression.py`（隔离 Typecho + SQLite） | 22 条路由、14 个静态资源，0 失败、0 警告、0 PHP 错误 |
+| 后台 `options-theme.php` | 200，新增 3 组控件渲染正常；保存后 `darkMode` / `accentColor` 正确回写前台 |
+| 老站点升级（无新配置） | 优雅降级为「增强层启用 + 跟随系统 + 默认主色」 |
+| 新增资源 | `css/dux-elegance.css`、`js/dux-enhance.js` 均 200 |
+| 浏览器实渲染（Chromium 1440×1200） | 首页 / 文章页 × 浅色 / 深色均正常；据此修复了深色模式下侧栏白块、评论框白底与「提交评论」按钮折行 |
 
 ## 1.3.x 适配要点
 
@@ -74,13 +138,15 @@ python tests/security_audit.py --strict           # 有 HIGH 时退出 1，用�
 - 演播室片源、封面、头像镜像、Logo、favicon、CDN 前缀都是后台可配置项，默认值安全。
 - 所有 `target="_blank"` 都带 `rel="noopener noreferrer"`。
 
-### 后台可填 HTML 的字段（需站长自己负责）
+### 后台可填 HTML 的字段
 
-`customcss`、`logotext`、`slidercode`、`fatext`、`pagefatext`、`sidebarAD`、
-`footad`、`flinks`、`fcode`、`GoogleAnalytics` 按设计**原样输出**到页面，只有管理员能写。
+1.4.0 起，`slidercode`、`fatext`、`pagefatext`、`sidebarAD`、`footad`、`flinks`、
+`fcode`、`smallbanner`、`brand`、`logotext` 等排版片段会先经 `duxSafeHtml()` 白名单清洗，
+`customcss` 经 `duxSafeCss()` 清洗，均**不再原样输出**。
 
+唯一例外是 `GoogleAnalytics`（统计代码），它按设计原样输出、只有管理员能写。
 请勿粘贴来路不明的统计代码或第三方脚本；填写前后各跑一次
-`security_audit.py` 与 `http_regression.py`。这些字段是「站长自己的选择」，不是主题的默认行为。
+`security_audit.py` 与 `http_regression.py`。这是「站长自己的选择」，不是主题的默认行为。
 
 ## 部署建议（Docker 镜像）
 

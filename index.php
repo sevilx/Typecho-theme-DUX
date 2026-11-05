@@ -4,7 +4,7 @@
  *
  * @package DUX主题
  * @author 大前端 (由 hiCasper 修改)
- * @version 1.0
+ * @version 1.4.0
  * @link https://github.com/hiCasper/Typecho-theme-DUX
  */
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
@@ -12,7 +12,7 @@ $this->need('header.php');?>
 
     <section class="container">
     <div class="content-wrap">
-        <div class="content">
+        <div class="content" id="dux-main" tabindex="-1">
             <!--幻灯片开始-->
 <?php if ($this->options->Slider == 'SliderTrue'): ?>
                 <?php slout(); ?>
@@ -24,24 +24,24 @@ $this->need('header.php');?>
             <div class="title">
                 <h3>最新发布</h3>
                 <?php if($this->options->smallbanner && !empty($this->options->smallbanner) ): ?>
-                <div class="more"><?php $this->options->smallbanner(); ?></div><?php endif; ?>
+                <div class="more"><?php echo duxSafeHtml($this->options->smallbanner); ?></div><?php endif; ?>
             </div>
 <?php if($this->have()):?>
-<?php while($this->next()): ?>
+<?php $duxRow = 0; while($this->next()): $duxRow++; ?>
             <article class="excerpt">
 <?php if ($this->options->indexpic == 'able'): ?>
                 <?php $thumb = duxEsc(showThumb($this)); ?>
-                <a class="focus" href="<?php $this->permalink() ?>"><img src="<?php echo $thumb; ?>" data-src="<?php echo $thumb; ?>" class="thumb" loading="lazy" decoding="async" alt="<?php echo duxEsc($this->title); ?>"></a>
+                <a class="focus" href="<?php $this->permalink() ?>"><img src="<?php echo $thumb; ?>" class="thumb" width="220" height="150" loading="<?php echo $duxRow <= 2 ? 'eager' : 'lazy'; ?>"<?php echo $duxRow === 1 ? ' fetchpriority="high"' : ''; ?> decoding="async" alt="<?php echo duxEsc($this->title); ?>"></a>
 <?php endif; ?>
                 <header>
                     <a class="cat"><?php $this->category(',',false); ?><i></i></a>
-                    <h2><a href="<?php $this->permalink() ?>" title="<?php $this->title() ?>-<?php $this->options->title();?>"><?php $this->title() ?></a></h2>
+                    <h2><a href="<?php $this->permalink() ?>" title="<?php echo duxEsc($this->title); ?>-<?php echo duxEsc($this->options->title); ?>"><?php $this->title() ?></a></h2>
                 </header>
                 <p class="meta">
-                    <time><i class="fa fa-clock-o"></i><?php $this->date('Y-m-d'); ?></time>
-                    <span class="author"><i class="fa fa-user"></i><?php $this->author(); ?></span>
-                    <span class="pv"><i class="fa fa-eye"></i>阅读(<?php get_post_view($this) ?>)</span>
-                    <a class="pc" href="<?php $this->permalink() ?>#comments"><i class="fa fa-comments-o"></i>评论(<?php $this->commentsNum('0', '1', '%d'); ?>)</a>
+                    <time datetime="<?php $this->date('c'); ?>"><i class="fa fa-clock-o" aria-hidden="true"></i><?php $this->date('Y-m-d'); ?></time>
+                    <span class="author"><i class="fa fa-user" aria-hidden="true"></i><?php $this->author(); ?></span>
+                    <span class="pv"><i class="fa fa-eye" aria-hidden="true"></i>阅读(<?php get_post_view($this) ?>)</span>
+                    <a class="pc" href="<?php $this->permalink() ?>#comments"><i class="fa fa-comments-o" aria-hidden="true"></i>评论(<?php $this->commentsNum('0', '1', '%d'); ?>)</a>
                 </p>
                 <p class="note"><?php $this->excerpt(150, '...'); ?></p>
             </article>

@@ -188,7 +188,7 @@ if ($duxLivePoster === '') {
 
 <section class="container">
     <div class="content-wrap">
-        <div class="content" style="width: 100%; margin-right: 0;">
+        <div class="content" id="dux-main" tabindex="-1" style="width: 100%; margin-right: 0;">
 
             <!-- 演播室主视觉区（纯前端本地展示，无任何子域名或节点信息暴露） -->
             <div class="live-studio-wrap">
@@ -264,8 +264,8 @@ if ($duxLivePoster === '') {
             <div class="tech-notes-card">
                 <h3><i class="fa fa-file-text-o"></i> 频道归档与更新日志</h3>
                 <article class="article-content">
-                    <?php if ($this->content): ?>
-                        <?php $this->content(); ?>
+                    <?php if (trim((string) $this->content) !== ''): ?>
+                        <?php parseContent($this); ?>
                     <?php else: ?>
                         <p>欢迎来到多媒体测试专栏。本页面主要用于分享前端音视频开发笔记、桌面软硬件折腾记录以及不定期的在线技术交流。</p>
                         <ul>
@@ -281,4 +281,12 @@ if ($duxLivePoster === '') {
     </div>
 </section>
 
-<?php $this->need('footer.php'); ?>
+<?php
+/*
+ * 已移除原先在页面加载后向外部媒体子域发起随机 x_padding
+ * OPTIONS「心跳」的脚本：它没有任何播放器功能，却会在每位访客打开
+ * 演播室页面时向外部域名泄露 IP / Referer，与主题「默认不产生外部请求」
+ * 的约定冲突，也白白多一次跨域预检。片源请在后台显式配置。
+ */
+$this->need('footer.php');
+?>

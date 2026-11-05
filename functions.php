@@ -16,7 +16,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 /** 主题版本号：静态资源缓存 bust 与 AMD 模块 urlArgs 共用同一个值 */
 if (!defined('DUX_VERSION')) {
-    define('DUX_VERSION', '1.3.3');
+    define('DUX_VERSION', '1.4.0');
 }
 
 /**
@@ -50,6 +50,218 @@ function duxIsModernTypecho()
 function duxEsc($value)
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * 后台「可填 HTML」字段的白名单清洗。
+ *
+ * 这些字段（幻灯片、导航图标、页脚广告、友情链接等）按设计允许站长写
+ * <a>/<img>/<i> 这类排版片段，但原主题是原样 echo：一旦后台账号被盗、
+ * 或复制了来路不明的广告代码，就会形成存储型 XSS。
+ *
+ * 这里用 DOM 白名单保留常见排版标签与属性，删除 script/iframe/style、
+ * 所有 on* 事件与 javascript:/data: 协议；DOM 扩展不可用时退回正则清洗。
+ * 「统计代码」字段是唯一例外，仍按原样输出（站长本来就要在那里放脚本）。
+ */
+function duxSafeHtml($html)
+{
+    $html = trim((string) $html);
+    if ($html === '') {
+        return '';
+    }
+
+    $allowedTags = array(
+        'a', 'img', 'i', 'span', 'div', 'p', 'br', 'hr', 'strong', 'em', 'b', 'u',
+        'ul', 'ol', 'li', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code',
+        'pre', 'small', 'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr',
+        'td', 'th', 'time', 'label'
+    );
+    $allowedAttrs = array(
+        'href', 'src', 'data-src', 'alt', 'title', 'class', 'id', 'target', 'rel',
+        'width', 'height', 'loading', 'decoding', 'fetchpriority', 'style',
+        'aria-label', 'role', 'datetime', 'srcset', 'sizes'
+    );
+
+    // 安全的 URL：http(s) 绝对地址，或不含协议的相对路径 / 锚点
+    $safeHref = function ($value) {
+        $v = trim((string) $value);
+        if ($v === '' || $v[0] === '#' || $v[0] === '/' || $v[0] === '?') {
+            return true;
+        }
+        if (preg_match('#^https?://#i', $v)) {
+            return duxSafeUrl($v) !== '';
+        }
+        // 排除 javascript: / data: / vbscript: 等一切带协议的值
+        return !preg_match('#^[a-z][a-z0-9+.\-]*:#i', $v);
+    };
+
+    if (class_exists('DOMDocument')) {
+        try {
+            $dom = new \DOMDocument('1.0', 'UTF-8');
+            $prev = libxml_use_internal_errors(true);
+            $ok = $dom->loadHTML(
+                '<?xml encoding="UTF-8" ?><html><body><div id="dux-root">' . $html . '</div></body></html>',
+                LIBXML_NONET
+            );
+            libxml_clear_errors();
+            libxml_use_internal_errors($prev);
+
+            if ($ok) {
+                $xpath = new \DOMXPath($dom);
+                $rootList = $xpath->query('//div[@id="dux-root"]');
+                $root = ($rootList && $rootList->length) ? $rootList->item(0) : null;
+                if ($root) {
+                    // 1) 整段移除危险元素（含内部文本）
+                    $danger = $xpath->query(
+                        '//script|//style|//iframe|//object|//embed|//form|//input|//button|'
+                        . '//select|//textarea|//svg|//math|//link|//meta|//base|//applet|//template'
+                    );
+                    if ($danger) {
+                        // DOMNodeList 在 PHP 7.x 不是 Traversable，用带 length 缓存的倒序删除
+                        for ($i = $danger->length - 1; $i >= 0; $i--) {
+                            $node = $danger->item($i);
+                            if ($node && $node->parentNode) {
+                                $node->parentNode->removeChild($node);
+                            }
+                        }
+                    }
+
+                    // 2) 标签与属性白名单
+                    $all = $xpath->query('//*');
+                    if ($all) {
+                        for ($i = $all->length - 1; $i >= 0; $i--) {
+                            $node = $all->item($i);
+                            if (!($node instanceof \DOMElement) || $node === $root) {
+                                continue;
+                            }
+                            $tag = strtolower($node->tagName);
+                            if (!in_array($tag, $allowedTags, true)) {
+                                // 不在白名单的标签：保留其文本，去掉标签本身
+                                $parent = $node->parentNode;
+                                if (!$parent) { continue; }
+                                while ($node->firstChild) {
+                                    $parent->insertBefore($node->firstChild, $node);
+                                }
+                                $parent->removeChild($node);
+                                continue;
+                            }
+                            $names = array();
+                            foreach ($node->attributes as $attr) {
+                                $names[] = $attr->name;
+                            }
+                            foreach ($names as $name) {
+                                $lower = strtolower($name);
+                                $isEvent = strpos($lower, 'on') === 0;
+                                if ($isEvent || !in_array($lower, $allowedAttrs, true)) {
+                                    $node->removeAttribute($name);
+                                    continue;
+                                }
+                                if ($lower === 'href' || $lower === 'src' || $lower === 'data-src' || $lower === 'srcset') {
+                                    $value = $node->getAttribute($name);
+                                    if ($lower === 'srcset') {
+                                        // srcset 形如 "a.jpg 1x, b.jpg 2x"，逐项检查
+                                        foreach (explode(',', $value) as $part) {
+                                            if (!$safeHref(preg_split('/\s+/', trim($part))[0])) {
+                                                $node->removeAttribute($name);
+                                                break;
+                                            }
+                                        }
+                                    } elseif (!$safeHref($value)) {
+                                        $node->removeAttribute($name);
+                                    }
+                                }
+                                if ($lower === 'style' && preg_match('/(expression\s*\(|@import|behavior\s*:|url\s*\(\s*["\']?\s*(?:javascript|data):)/i', $value = $node->getAttribute($name))) {
+                                    $node->removeAttribute($name);
+                                }
+                            }
+                            // 外链统一补 noopener，避免后台片段里的 tabnabbing
+                            if ($tag === 'a' && strtolower((string) $node->getAttribute('target')) === '_blank') {
+                                $rel = strtolower((string) $node->getAttribute('rel'));
+                                $need = '';
+                                if (strpos($rel, 'noopener') === false) { $need .= ' noopener'; }
+                                if (strpos($rel, 'noreferrer') === false) { $need .= ' noreferrer'; }
+                                if ($need !== '') {
+                                    $node->setAttribute('rel', trim($rel . $need));
+                                }
+                            }
+                        }
+                    }
+
+                    // 3) 只返回片段内部 HTML，不带 libxml 补的 html/body
+                    $out = '';
+                    foreach ($root->childNodes as $child) {
+                        $out .= $dom->saveHTML($child);
+                    }
+                    return $out;
+                }
+            }
+        } catch (\Throwable $e) {
+            // 落到下面的正则兜底
+        }
+    }
+
+    // 兜底：DOM 扩展不可用时至少挡住最危险的三类注入
+    $html = preg_replace(
+        '#<\s*(script|style|iframe|object|embed|form|input|button|select|textarea|svg|math|link|meta|base|applet|template)\b[^>]*>.*?<\s*/\s*\1\s*>#is',
+        '', $html
+    );
+    $html = preg_replace(
+        '#<\s*/?\s*(script|style|iframe|object|embed|form|input|button|select|textarea|svg|math|link|meta|base|applet|template)\b[^>]*>#i',
+        '', $html
+    );
+    $html = preg_replace('/\s+on[a-z]+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html);
+    $html = preg_replace('/([\'"\s])(?:javascript|vbscript|data)\s*:/i', '$1#dux-blocked:', $html);
+    return $html;
+}
+
+/** 自定义 CSS：防止 </style> 提前闭合样式块把脚本注入页面 */
+function duxSafeCss($css)
+{
+    $css = (string) $css;
+    $css = preg_replace('#<\s*/\s*style#i', '', $css);
+    $css = preg_replace('/expression\s*\(/i', '', $css);
+    return $css;
+}
+
+/** 外观增强层是否启用：老站点升级后没有该配置项时默认启用 */
+function duxEleganceEnabled()
+{
+    return (string) duxOptions()->elegance !== 'disable';
+}
+
+/** 深色模式策略：auto / light / dark / disable */
+function duxThemeMode()
+{
+    $mode = (string) duxOptions()->darkMode;
+    return in_array($mode, array('auto', 'light', 'dark', 'disable'), true) ? $mode : 'auto';
+}
+
+/** 后台自定义主色，只接受 6 位 HEX，其余一律回退到样式表默认值 */
+function duxAccentColor()
+{
+    $color = trim((string) duxOptions()->accentColor);
+    return preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? $color : '';
+}
+
+/** 由主色派生 hover / 柔和底色，生成一段可直接放进 <style> 的变量覆盖 */
+function duxAccentCss()
+{
+    $hex = duxAccentColor();
+    if ($hex === '') {
+        return '';
+    }
+    $r = hexdec(substr($hex, 1, 2));
+    $g = hexdec(substr($hex, 3, 2));
+    $b = hexdec(substr($hex, 5, 2));
+    $dark = function ($v) { return (int) round($v * 0.78); };
+    $hover = sprintf('#%02x%02x%02x', $dark($r), $dark($g), $dark($b));
+
+    return ':root{'
+        . '--dux-accent:' . $hex . ';'
+        . '--dux-accent-hover:' . $hover . ';'
+        . '--dux-accent-soft:rgba(' . $r . ',' . $g . ',' . $b . ',0.10);'
+        . '--dux-accent-line:rgba(' . $r . ',' . $g . ',' . $b . ',0.28);'
+        . '}';
 }
 
 /** 带版本号的静态资源 URL，避免主题升级后浏览器一直命中旧缓存 */
@@ -145,6 +357,23 @@ function duxLegacyCommentToken($archive)
 /* ------------------------------------------------------------------ */
 function themeConfig($form)
 {
+    // 外观增强：三项都留空/关闭即可完整回退到 1.3.x 的原版视觉效果
+    $elegance = duxFormElement('Radio', 'elegance',
+        array('able' => _t('启用'), 'disable' => _t('关闭')),
+        'able', _t('外观增强层'),
+        _t('现代化排版、卡片层次、代码复制、阅读进度、键盘焦点与深色模式。关闭后恢复原版样式。'));
+    $form->addInput($elegance);
+
+    $darkMode = duxFormElement('Radio', 'darkMode',
+        array('auto' => _t('跟随系统'), 'light' => _t('默认浅色'), 'dark' => _t('默认深色'), 'disable' => _t('禁用')),
+        'auto', _t('深色模式'),
+        _t('跟随系统时会在导航栏显示切换按钮并记住访客选择；禁用则始终浅色且不显示按钮。'));
+    $form->addInput($darkMode);
+
+    $accentColor = duxFormElement('Text', 'accentColor', NULL, '', _t('主题色'),
+        _t('可选，填 6 位十六进制色值如 #2f6fbd；留空使用内置的沉静蓝。'));
+    $form->addInput($accentColor);
+
     // header 部分
     $logoUrl = duxFormElement('Text', 'logoUrl', NULL, NULL, _t('站点LOGO地址'), _t('在这里填入一个图片URL地址, 以在网站标题前加上一个LOGO'));
     $form->addInput($logoUrl->addRule('xssCheck', _t('请不要在图片链接中使用特殊字符')));
@@ -290,6 +519,28 @@ function parseContent($obj)
     if (!empty($options->src_add) && !empty($options->cdn_add)) {
         $content = str_ireplace($options->src_add, $options->cdn_add, $content);
     }
+
+    /*
+     * 长文里的图片是最大的带宽来源：第一张通常是 LCP，优先加载；
+     * 其余交给浏览器原生懒加载，避免一次拉取整篇文章的全部配图。
+     * 只补属性、不改动标签结构，Markdown / 编辑器生成的 HTML 都能安全通过。
+     */
+    $imageIndex = 0;
+    $content = preg_replace_callback('/<img\b[^>]*>/i', function ($tag) use (&$imageIndex) {
+        $imageIndex++;
+        $html = $tag[0];
+        if ($imageIndex === 1) {
+            if (stripos($html, 'fetchpriority=') === false) {
+                $html = preg_replace('/(\s*\/?>)$/', ' fetchpriority="high"$1', $html, 1);
+            }
+        } elseif (stripos($html, 'loading=') === false) {
+            $html = preg_replace('/(\s*\/?>)$/', ' loading="lazy"$1', $html, 1);
+        }
+        if (stripos($html, 'decoding=') === false) {
+            $html = preg_replace('/(\s*\/?>)$/', ' decoding="async"$1', $html, 1);
+        }
+        return $html;
+    }, $content);
 
     echo trim($content);
 }
@@ -544,9 +795,10 @@ function slout()
     $themeUrl = rtrim((string) $options->themeUrl, '/');
 
     $text = !empty($options->slidercode)
-        ? (string) $options->slidercode
+        ? duxSafeHtml($options->slidercode)
         : '<a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/hiCasper/Typecho-theme-DUX"><img src="'
-            . duxEsc($themeUrl . '/img/banner.jpg') . '"></a>';
+            . duxEsc($themeUrl . '/img/banner.jpg') . '" width="820" height="200"'
+            . ' loading="eager" fetchpriority="high" decoding="async" alt=""></a>';
 
     // 兼容 Windows / Unix 换行，丢弃空行，避免出现空的幻灯片项
     $items = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $text)), 'strlen'));
@@ -583,7 +835,7 @@ function fa_ico($type, $num)
     }
 
     $items = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $text)), 'strlen'));
-    return isset($items[$num]) ? $items[$num] : '';
+    return isset($items[$num]) ? duxSafeHtml($items[$num]) : '';
 }
 
 /** 侧边栏推荐位：返回长度为 3 的倍数的行数组，防止模板下标越界 */

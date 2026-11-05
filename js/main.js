@@ -80,13 +80,7 @@ if( Number(jsui.ajaxpager) > 0 && ($('.excerpt').length || $('.excerpt-minic').l
                 loader: '<div class="pagination-loading"><img src="'+jsui.uri+'/img/loading.gif"></div>',
                 trigger: 'More',
                 onRenderComplete: function() {
-                    tbquire(['lazyload'], function() {
-                        $('.excerpt .thumb').lazyload({
-                            data_attribute: 'src',
-                            placeholder: jsui.uri + '/img/thumbnail.png',
-                            threshold: 400
-                        });
-                    });
+                    // 新插入的文章已带原生 loading 属性，无需再初始化 jQuery lazyload
                 }
             });
         }
@@ -102,13 +96,7 @@ if( Number(jsui.ajaxpager) > 0 && ($('.excerpt').length || $('.excerpt-minic').l
                 loader: '<div class="pagination-loading"><img src="'+jsui.uri+'/img/loading.gif"></div>',
                 trigger: 'More',
                 onRenderComplete: function() {
-                    tbquire(['lazyload'], function() {
-                        $('.excerpt .thumb').lazyload({
-                            data_attribute: 'src',
-                            placeholder: jsui.uri + '/img/thumbnail.png',
-                            threshold: 400
-                        });
-                    });
+                    // 新插入的文章已带原生 loading 属性，无需再初始化 jQuery lazyload
                 }
             });
         }
@@ -116,43 +104,18 @@ if( Number(jsui.ajaxpager) > 0 && ($('.excerpt').length || $('.excerpt-minic').l
 }
 
 
-/* 
+/*
  * lazyload
  * ====================================================
+ * 已移除：旧版给每个 <img> 同时写 src 和 data-src，再由 jQuery lazyload
+ * 把 src 换成占位图、进入视口后再换回来，等于同一张图被声明两次，
+ * 且首屏之外也会因为 src 提前发请求，和 HTML5 loading="lazy" 互相打架。
+ *
+ * 现在模板统一输出原生 loading / decoding / width / height，
+ * 由浏览器自己做懒加载与布局占位：少一个 JS 请求、少一次图片重排、
+ * 深色/无 JS 环境下同样生效。极老浏览器由 dux-enhance.js 的
+ * IntersectionObserver 兜底。
 */
-if ( $('.thumb:first').data('src') || $('.widget_ui_posts .thumb:first').data('src') || $('.wp-smiley:first').data('src') || $('.avatar:first').data('src')) {
-    tbquire(['lazyload'], function() {
-        $('.avatar').lazyload({
-            data_attribute: 'src',
-            placeholder: jsui.uri + '/img/avatar-default.png',
-            threshold: 400
-        })
-
-        $('.widget .avatar').lazyload({
-            data_attribute: 'src',
-            placeholder: jsui.uri + '/img/avatar-default.png',
-            threshold: 400
-        })
-
-        $('.thumb').lazyload({
-            data_attribute: 'src',
-            placeholder: jsui.uri + '/img/thumbnail.png',
-            threshold: 400
-        })
-
-        $('.widget_ui_posts .thumb').lazyload({
-            data_attribute: 'src',
-            placeholder: jsui.uri + '/img/thumbnail.png',
-            threshold: 400
-        })
-
-        $('.wp-smiley').lazyload({
-            data_attribute: 'src',
-            // placeholder: jsui.uri + '/img/thumbnail.png',
-            threshold: 400
-        })
-    })
-}
 
 
 /* 
@@ -177,40 +140,63 @@ if( $('.prettyprint').length ){
 */
 jsui.rb_comment = ''
 if (jsui.bd.hasClass('comment-open')) {
-    jsui.rb_comment = "<li><a href=\"javascript:(scrollTo('#comments',-15));\"><i class=\"fa fa-comments\"></i></a><h6>去评论<i></i></h6></li>"
+    // 不再使用 javascript: 伪协议：会被 CSP 拦截，也是典型的注入面
+    jsui.rb_comment = '<li><a href="#" data-dux-scroll="#comments" aria-label="跳到评论"><i class="fa fa-comments" aria-hidden="true"></i></a><h6>去评论<i></i></h6></li>'
 }
 
 jsui.bd.append('\
     <div class="m-mask"></div>\
     <div class="rollbar"><ul>'
     +jsui.rb_comment+
-    '<li><a href="javascript:(scrollTo());"><i class="fa fa-angle-up"></i></a><h6>去顶部<i></i></h6></li>\
+    '<li><a href="#" data-dux-scroll="top" aria-label="回到顶部"><i class="fa fa-angle-up" aria-hidden="true"></i></a><h6>去顶部<i></i></h6></li>\
     </ul></div>\
 ')
 
-
+jsui.bd.on('click', '.rollbar a[data-dux-scroll]', function(e) {
+    e.preventDefault()
+    var target = $(this).attr('data-dux-scroll')
+    if (target === 'top') scrollTo()
+    else scrollTo(target, -15)
+})
 
 var _wid = $(window).width()
-
-$(window).resize(function(event) {
-    _wid = $(window).width()
-});
-
-
+window.addEventListener('resize', function() { _wid = window.innerWidth }, { passive: true })
 
 var scroller = $('.rollbar')
 var _fix = (jsui.bd.hasClass('nav_fixed') && !jsui.bd.hasClass('page-template-navs')) ? true : false
-$(window).scroll(function() {
-    var h = document.documentElement.scrollTop + document.body.scrollTop
+var scrollTicking = false
+var scrollerVisible = false
 
-    if( _fix && h > 0 && _wid > 720 ){
+function duxOnScroll() {
+    var h = window.pageYOffset || document.documentElement.scrollTop || 0
+
+    if (_fix && h > 0 && _wid > 720) {
         jsui.bd.addClass('nav-fixed')
-    }else{
+    } else {
         jsui.bd.removeClass('nav-fixed')
     }
 
-    h > 200 ? scroller.fadeIn() : scroller.fadeOut();
-})
+    // 只在越过阈值时切换一次，避免每个滚动事件都往 jQuery 动画队列里塞一帧
+    if (h > 200 && !scrollerVisible) {
+        scroller.stop(true, true).fadeIn()
+        scrollerVisible = true
+    } else if (h <= 200 && scrollerVisible) {
+        scroller.stop(true, true).fadeOut()
+        scrollerVisible = false
+    }
+    scrollTicking = false
+}
+
+var duxRaf = window.requestAnimationFrame
+    ? window.requestAnimationFrame.bind(window)
+    : function(cb) { return window.setTimeout(cb, 16) }
+window.addEventListener('scroll', function() {
+    if (!scrollTicking) {
+        scrollTicking = true
+        duxRaf(duxOnScroll)
+    }
+}, { passive: true })
+duxOnScroll()
 
 
 /* 
@@ -317,7 +303,7 @@ if( jsui.bd.hasClass('page-template-pagesnavs-php') ){
     })
     $('#navs nav ul').html( titles )
 
-    $('#navs .items a').attr('target', '_blank')
+    $('#navs .items a').attr('target', '_blank').attr('rel', 'noopener noreferrer nofollow')
 
     $('#navs nav ul').affix({
         offset: {

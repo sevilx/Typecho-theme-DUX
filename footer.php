@@ -23,13 +23,14 @@ $jsuiJson = json_encode(
 if ($jsuiJson === false) {
     $jsuiJson = '{"www":"","uri":"","ver":"' . DUX_VERSION . '","roll":[1],"ajaxpager":0}';
 }
+$duxElegance = duxEleganceEnabled();
 ?>
 
     <!--footer-->
 <?php if($this->options->footad && !empty($this->options->footad) ): ?>
     <div class="branding branding-black">
         <div class="container">
-            <?php $this->options->footad(); ?>
+            <?php echo duxSafeHtml($this->options->footad); ?>
         </div>
     </div>
 <?php endif; ?>
@@ -39,12 +40,12 @@ if ($jsuiJson === false) {
             <div class="flinks">
                 <strong>友情链接</strong>
                 <ul class='xoxo blogroll'>
-                    <?php $this->options->flinks(); ?>
+                    <?php echo duxSafeHtml($this->options->flinks); ?>
                 </ul>
             </div>
 <?php endif; ?>
 <?php if($this->options->fcode && !empty($this->options->fcode) ): ?>
-            <div class="fcode"><?php $this->options->fcode(); ?></div>
+            <div class="fcode"><?php echo duxSafeHtml($this->options->fcode); ?></div>
 <?php endif; ?>
             <div class="copyright">
                 <p>
@@ -65,13 +66,17 @@ if ($jsuiJson === false) {
         </div>
     </footer>
 <?php if ($this->options->useHighline == 'able'): ?>
-    <script src="<?php echo duxEsc(duxAssetUrl('css/highlight.min.js')); ?>"></script>
+    <script defer src="<?php echo duxEsc(duxAssetUrl('css/highlight.min.js')); ?>"></script>
 <?php endif; ?>
     <script>
         window.jsui = <?php echo $jsuiJson; ?>;
     </script>
-    <script type='text/javascript' src='<?php echo duxEsc(duxAssetUrl('css/bootstrap.min.js')); ?>'></script>
-    <script type='text/javascript' src='<?php echo duxEsc(duxAssetUrl('js/loader.js')); ?>'></script>
+    <!-- 全部 defer：按文档顺序执行，jQuery 仍先于 bootstrap / RequireJS 就绪，但不再阻塞首屏 -->
+    <script defer type='text/javascript' src='<?php echo duxEsc(duxAssetUrl('css/bootstrap.min.js')); ?>'></script>
+    <script defer type='text/javascript' src='<?php echo duxEsc(duxAssetUrl('js/loader.js')); ?>'></script>
+<?php if ($duxElegance): ?>
+    <script defer type='text/javascript' src='<?php echo duxEsc(duxAssetUrl('js/dux-enhance.js')); ?>'></script>
+<?php endif; ?>
     <!-- Analytics code：仅输出后台「统计代码」里由站长自己填写的内容，留空即无任何第三方请求 -->
 <?php if($this->options->GoogleAnalytics): ?>
     <?php $this->options->GoogleAnalytics(); ?>
