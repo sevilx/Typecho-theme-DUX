@@ -78,5 +78,13 @@ $duxElegance = duxEleganceEnabled();
 <?php if($this->options->GoogleAnalytics): ?>
     <?php $this->options->GoogleAnalytics(); ?>
 <?php endif; ?>
+<?php
+/*
+ * Typecho 1.3 的 footer 插件点：Access 前端日志、MarkdownParse、PostToc 等
+ * 插件都通过它注入前台脚本。主题若不调用 $this->footer()，这些插件会静默失效。
+ * 保留在 </body> 前，插件输出不会阻塞首屏渲染。
+ */
+$this->footer();
+?>
 </body>
 </html>
