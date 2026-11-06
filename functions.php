@@ -2,7 +2,11 @@
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 /**
- * DUX for Typecho —— 兼容层
+ * DUX for Typecho · Ben Edition —— 兼容层
+ *
+ * 由 Ben (sevilx) 基于大前端 DUX / hiCasper 的 Typecho 移植版二次开发并维护的独立分支。
+ * 上游：https://github.com/hiCasper/Typecho-theme-DUX
+ * 本分支：https://github.com/sevilx/Typecho-theme-DUX
  *
  * 目标版本：Typecho 1.3.1 (PHP 7.4+ / 8.x)
  * 说明：
@@ -12,21 +16,8 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  *     所有数据库与配置项读取均做空值保护。
  *  3. 评论表单的安全令牌由 Typecho 自身在 header() 中注入，主题不再手写，
  *     避免与 1.3.1 的 antiSpam 脚本产生双 "_" 字段导致校验失败。
+ *  4. 主题版本号不独立编号，直接跟随当前 Typecho 版本（见 duxThemeVersion()）。
  */
-
-/** 主题版本号：静态资源缓存 bust 与 AMD 模块 urlArgs 共用同一个值 */
-if (!defined('DUX_VERSION')) {
-    define('DUX_VERSION', '1.4.0');
-}
-
-/**
- * 站点备案号兜底值。
- * 后台「设置外观 → 备案号」优先；该项留空（例如主题更新后设置被重置）时使用此常量，
- * 保证页脚备案信息不会因为配置丢失而消失。二次开发请改成自己的备案号。
- */
-if (!defined('DUX_SITE_ICP')) {
-    define('DUX_SITE_ICP', '粤ICP备 2026163379 号');
-}
 
 /** 读取当前 Typecho 版本号，兼容命名空间版与旧版 */
 function duxTypechoVersion()
@@ -38,6 +29,24 @@ function duxTypechoVersion()
         return (string) constant('Typecho_Common::VERSION');
     }
     return '1.0';
+}
+
+/**
+ * 主题版本号 = 当前运行的 Typecho 版本号。
+ *
+ * 本分支（Ben Edition）刻意不再自行编号：一来与上游 hiCasper 的 1.x 版本号明确区分，
+ * 看到版本就知道这份主题对应哪个 Typecho；二来升级 Typecho 后静态资源的 ?ver=
+ * 会自动变化，不必再手动改版本号清缓存。只保留 URL 查询串安全的字符。
+ */
+function duxThemeVersion()
+{
+    $v = preg_replace('/[^A-Za-z0-9.\-]/', '', duxTypechoVersion());
+    return ($v !== '' && $v !== '1.0') ? $v : '1.3.1';
+}
+
+/** 主题版本号：静态资源缓存 bust 与 AMD 模块 urlArgs 共用同一个值 */
+if (!defined('DUX_VERSION')) {
+    define('DUX_VERSION', duxThemeVersion());
 }
 
 /** 是否为 1.2+ 的命名空间版 Typecho */
@@ -443,7 +452,7 @@ function themeConfig($form)
     $form->addInput($sidebarBlock->multiMode());
 
     $sidebarAD = duxFormElement('Textarea', 'sidebarAD', NULL, NULL, _t('侧边栏推荐位红色'),
-        _t('请按固定格式填写，否则会造成错乱，可添加多个，第一行是广告的链接地址，第二行是广告标题，第三行是广告内容<br>例如:<br>http://themebetter.com/theme/dux<br>DUX主题 新一代主题<br>DUX Wordpress主题是大前端当前使用主题，是大前端积累多年Wordpress主题经验设计而成；更加扁平的风格和干净白色的架构会让网站显得内涵而出色...'));
+        _t('请按固定格式填写，否则会造成错乱，可添加多个，第一行是广告的链接地址，第二行是广告标题，第三行是广告内容<br>例如:<br>https://github.com/sevilx/Typecho-theme-DUX<br>DUX主题 新一代主题<br>面向 Typecho 1.3 的现代化 DUX 主题，开源、可自由二次开发；留空则显示主题仓库的默认推荐位。'));
     $form->addInput($sidebarAD);
 
     $sitebar_fu = duxFormElement('Text', 'sitebar_fu', NULL, NULL, _t('侧边栏浮动'),
@@ -486,7 +495,7 @@ function themeConfig($form)
     $fcode = duxFormElement('Textarea', 'fcode', NULL, NULL, _t('底部小广告'), _t('该块显示在网站底部版权上方，可已定义放一些链接或者图片之类的内容。'));
     $form->addInput($fcode);
     $miitbeian = duxFormElement('Text', 'miitbeian', NULL, NULL, _t('备案号'),
-        _t('填写你的备案号；留空则自动使用主题内置的 DUX_SITE_ICP 兜底值（防止主题更新后设置丢失）'));
+        _t('填写你的备案号，留空则不显示。备案信息只保存在本站后台设置里，主题代码中不含任何站点信息，可以放心分享与二次分发'));
     $form->addInput($miitbeian);
     $GoogleAnalytics = duxFormElement('Textarea', 'GoogleAnalytics', NULL, NULL, _t('统计代码'), _t('填写你的各种跟踪统计代码，相当于页尾代码；此项会原样输出到页面，请只填自己可信的代码'));
     $form->addInput($GoogleAnalytics);
@@ -796,7 +805,7 @@ function slout()
 
     $text = !empty($options->slidercode)
         ? duxSafeHtml($options->slidercode)
-        : '<a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/hiCasper/Typecho-theme-DUX"><img src="'
+        : '<a target="_blank" rel="noopener noreferrer nofollow" href="https://github.com/sevilx/Typecho-theme-DUX"><img src="'
             . duxEsc($themeUrl . '/img/banner.jpg') . '" width="820" height="200"'
             . ' loading="eager" fetchpriority="high" decoding="async" alt=""></a>';
 
@@ -841,12 +850,26 @@ function fa_ico($type, $num)
 /** 侧边栏推荐位：返回长度为 3 的倍数的行数组，防止模板下标越界 */
 function sitebar_ad($obj)
 {
+    $themeRepo = 'https://github.com/sevilx/Typecho-theme-DUX';
     $text = !empty($obj)
         ? (string) $obj
-        : "https://github.com/hiCasper/Typecho-theme-DUX\nDUX主题 新一代主题\nDUX for Typecho";
+        : $themeRepo . "\nDUX主题 新一代主题\nDUX for Typecho · Ben Edition，开源可自由二次开发";
 
     $lines = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $text)), 'strlen'));
     $groups = (int) floor(count($lines) / 3);
+
+    // 老站点后台里可能已经保存了上游主题的旧默认链接。把这两个已知的历史默认值
+    // 迁移到本分支仓库，站长无需手动改设置；自己填的自定义链接完全不受影响。
+    $legacy = array(
+        'https://github.com/hicasper/typecho-theme-dux',
+        'http://themebetter.com/theme/dux',
+    );
+    for ($i = 0; $i < $groups * 3; $i += 3) {
+        if (in_array(strtolower(rtrim($lines[$i], '/')), $legacy, true)) {
+            $lines[$i] = $themeRepo;
+        }
+    }
+
     return array_slice($lines, 0, $groups * 3);
 }
 

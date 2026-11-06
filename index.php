@@ -1,11 +1,15 @@
 <?php
 /**
- * 大前端主题修改版 for Typecho
+ * DUX for Typecho · Ben Edition
  *
- * @package DUX主题
- * @author 大前端 (由 hiCasper 修改)
- * @version 1.4.0
- * @link https://github.com/hiCasper/Typecho-theme-DUX
+ * 由 Ben (sevilx) 二次开发并维护的独立发行版，面向 Typecho 1.3.x。
+ * 与原移植版 https://github.com/hiCasper/Typecho-theme-DUX 不是同一分支：
+ * 本版重构了兼容层、外观增强层与安全策略，且版本号跟随所运行的 Typecho。
+ *
+ * @package DUX for Typecho (Ben Edition)
+ * @author  Ben
+ * @version 跟随 Typecho\Common::VERSION（见 functions.php 的 DUX_VERSION）
+ * @link    https://github.com/sevilx/Typecho-theme-DUX
  */
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 $this->need('header.php');?>

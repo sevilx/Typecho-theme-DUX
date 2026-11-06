@@ -1,11 +1,48 @@
-# Typecho-theme-DUX
+# DUX for Typecho · Ben Edition
 
-> Forked from https://coding.net/u/Arco-X/p/DUX-for-Typecho/git
-> 一款基于大前端 DUX for WordPress 主题修改而来的 Typecho 主题。
+> **维护者：Ben（[@sevilx](https://github.com/sevilx)）**
+> 仓库：https://github.com/sevilx/Typecho-theme-DUX
+> 上游致谢：大前端 DUX for WordPress → [hiCasper/Typecho-theme-DUX](https://github.com/hiCasper/Typecho-theme-DUX)（早期 Typecho 移植）
+> 许可：GPL，见 [LICENSE](LICENSE)
+
+这是由 **Ben** 二次开发并长期维护的**独立发行版**，和上游 `hiCasper/Typecho-theme-DUX`
+**不是同一个分支**，请勿把两个仓库的文件交叉覆盖。主要区别：
+
+| | 上游 hiCasper 版 | 本分支（Ben Edition） |
+| --- | --- | --- |
+| 适配目标 | Typecho 1.0 / 1.1 时代 | **Typecho 1.3.x（1.3.1-rc）+ PHP 8.2**，兼容 1.2+ / PHP 7.4+ |
+| 版本号 | 主题自行编号 | **不独立编号，直接取 `Typecho\Common::VERSION`**，即与所运行的 Typecho 一致 |
+| 评论 / 阅读数 | 旧 API | 走 1.3 官方 `TypechoComment` / antiSpam；直读 `views` 列，消除列表页 N+1 |
+| 外观 | 原版样式 | 独立增强层（后台可一键关闭回退）、深浅色、主题色、阅读进度、代码复制 |
+| 安全 | HTML 片段原样输出 | `duxSafeHtml()` / `duxSafeUrl()` / `duxSafeCss()` 白名单 + 离线安全审计 |
+| 备案号 | — | **只从后台设置读取，代码里不含任何站点信息**，可直接分享给别人安装 |
 
 当前分支针对 **Typecho 1.3.x 开发版（1.3.1-rc）+ PHP 8.2** 做了完整适配、回归与安全审计，
-同时保留对 Typecho 1.2+ / PHP 7.4+ 的兼容回退。
-**1.4.0** 在此基础上追加了一轮性能、视觉与安全优化（见下节），全部改动保持 DUX 原有布局与配色可回退。
+同时保留对 Typecho 1.2+ / PHP 7.4+ 的兼容回退；所有视觉改动都保持 DUX 原有布局与配色可回退。
+
+## 安装与使用
+
+1. 下载 Release 压缩包，或 `git clone https://github.com/sevilx/Typecho-theme-DUX.git`；
+2. 把整个目录放到 Typecho 的 `usr/themes/` 下（目录名可自定，例如 `DUX-Ben`），
+   确保 `index.php` 位于该目录根部；
+3. 后台「控制台 → 外观」启用，再到「设置外观」按需配置；
+4. **备案号**：在「设置外观 → 备案号」填自己的，留空则不显示。
+   主题代码里没有任何硬编码的备案号或个人站点信息，可以放心二次分发；
+5. 若站点前面挂了 CDN / 边缘缓存（ESA、Cloudflare 等），升级后刷新一次缓存，
+   静态资源的 `?ver=` 会随 Typecho 版本自动变化。
+
+自定义页面模板（文章归档、分类归档、标签云、友情链接、演播室、侧边栏页面）
+在「创建页面 → 自定义模板」中选择即可，全部可选、不启用也不影响主题。
+
+## 版本号说明
+
+本分支**不再自行编号**。`functions.php` 的 `DUX_VERSION` 在运行时读取
+`Typecho\Common::VERSION`，主题版本与站点实际运行的 Typecho 版本始终一致：
+
+- 看到版本号就知道这份主题对应哪个 Typecho，不会和上游的 1.x 编号混淆；
+- `?ver=` 缓存 bust 与页脚 `window.jsui.ver` 共用该值，升级 Typecho 后自动刷新缓存，
+  不需要再手工改主题版本号；
+- 版本号只保留 URL 查询串安全字符，读不到版本时回退到 `1.3.1`。
 
 ## 特性
 
@@ -13,9 +50,10 @@
 - 美化了样式，修改细节，增加了一些小功能
 - 新旧 Typecho 兼容层：`duxWidget` / `duxDb` / `duxOptions` / `duxFormElement` / `duxEsc`
 - 自定义模板：文章归档、分类归档、标签云、友链、多媒体演播室、侧边栏页面
-- 1.4.0：外观增强层、深浅色模式、可配置主题色、阅读进度、代码一键复制、原生懒加载
+- 外观增强层、深浅色模式、可配置主题色、阅读进度、代码一键复制、原生懒加载
+- 页面级补完：404、归档 / 分类、独立页左侧导航、标签云、最新推荐卡片、评论层级
 
-## 1.4.0 体验优化
+## 外观与体验增强
 
 设计原则：**不改 4500 行的历史 `css/main.css`**，新增独立的 `css/dux-elegance.css` 与
 无依赖的 `js/dux-enhance.js` 作为增强层。后台「外观增强」选「禁用」即可一键回到旧版外观，
@@ -38,12 +76,14 @@
 - 用原生 `loading="lazy"` / `decoding="async"` 取代 jQuery `lazyload`，删除 `src` + `data-src` 双写造成的重复请求
 - 所有缩略图 / Logo / banner 补 `width` / `height`，降低 CLS；首屏首图加 `fetchpriority="high"`
 - 滚动监听改 `requestAnimationFrame` 节流 + `passive: true`，只在跨越 200px 阈值时切换 rollbar
-- 静态资源统一 `?ver=1.4.0` 缓存 bust（版本号集中在 `DUX_VERSION`）
+- 静态资源统一 `?ver=<Typecho 版本>` 缓存 bust（版本号集中在 `DUX_VERSION`）
 - 移除演播室页面每次加载都向外部媒体子域发起的 `OPTIONS` 心跳（无功能、泄露访客 IP / Referer）
 
 ### 视觉与可访问性
 
 - CSS 设计令牌统一颜色 / 圆角 / 阴影 / 字体栈 / 缓动；重做卡片、正文排版、代码块、表格、引用、标签、分页、评论、页脚
+- 页面级补完：404 页、归档 / 分类列表、独立页左侧导航、标签云容器、侧栏推荐卡片、嵌套评论层级，
+  全部复用同一组设计令牌，深色模式自动适配
 - 修复原 `.comt-main { max-height: 300px; overflow: hidden }` 截断长评论
 - 补 `focus-visible` 焦点环（原 `main.css` 的 `a:focus { outline: 0 }` 抹掉了键盘焦点）、skip link、`<button>` 替代伪按钮、`aria-*` / `<time datetime>`
 - 恢复移动端缩放（移除 `user-scalable=0` / `maximum-scale=1`）
@@ -60,11 +100,12 @@
 - 头像加 `referrerpolicy="no-referrer"`；外链补 `noopener noreferrer`；移除两处 `javascript:` 伪协议
 - 评论表单补 `autocomplete` / `aria-label` / `inputmode`，网址改为 `type="text"` 避免误拒裸域名
 - 动态属性输出统一 `duxEsc()`；`duxSafeUrl()` 保持 URL 协议白名单
+- 备案号、统计代码、片源、头像镜像、Logo、favicon 等站点信息全部由后台配置，主题代码零硬编码
 
 > **`GoogleAnalytics` 是唯一仍按原样输出的字段**：它的设计用途就是让站长放统计脚本，
 > 只有管理员能写，请勿粘贴来路不明的代码。
 
-### 验证结论（1.4.0）
+### 验证结论
 
 | 项目 | 结果 |
 | --- | --- |
@@ -76,6 +117,9 @@
 | 老站点升级（无新配置） | 优雅降级为「增强层启用 + 跟随系统 + 默认主色」 |
 | 新增资源 | `css/dux-elegance.css`、`js/dux-enhance.js` 均 200 |
 | 浏览器实渲染（Chromium 1440×1200） | 首页 / 文章页 × 浅色 / 深色均正常；据此修复了深色模式下侧栏白块、评论框白底与「提交评论」按钮折行 |
+
+上表是增强层的历史验证记录；后续的署名 / 版本 / 备案调整只改动注释、常量与少量输出，
+发布前另做 `php -l`、离线安全审计与敏感信息扫描。
 
 ## 1.3.x 适配要点
 
@@ -95,7 +139,7 @@
 
 ```bash
 # 生产站点
-python tests/http_regression.py --base https://www.xiongjinghang.com
+python tests/http_regression.py --base https://example.com
 
 # 本地隔离实例
 python tests/http_regression.py --base http://127.0.0.1:8901 --out report.json
@@ -140,7 +184,7 @@ python tests/security_audit.py --strict           # 有 HIGH 时退出 1，用�
 
 ### 后台可填 HTML 的字段
 
-1.4.0 起，`slidercode`、`fatext`、`pagefatext`、`sidebarAD`、`footad`、`flinks`、
+本分支起，`slidercode`、`fatext`、`pagefatext`、`sidebarAD`、`footad`、`flinks`、
 `fcode`、`smallbanner`、`brand`、`logotext` 等排版片段会先经 `duxSafeHtml()` 白名单清洗，
 `customcss` 经 `duxSafeCss()` 清洗，均**不再原样输出**。
 
@@ -169,5 +213,11 @@ Typecho 代码、`opcache` 完全一致，差别只在 Web 服务器层：
 - 主题会自动给 `contents` 表加 `views` 列；只读数据库或无 `ALTER` 权限时阅读数固定显示 0，不影响页面。
 - 演播室默认不播放任何外部视频；如需演示片源，在「主题设置 → 演播室片源地址」填自己的 http(s) 直链。
 - 头像默认走 Cravatar 镜像，可在「主题设置 → 头像镜像地址」换成其他兼容 Gravatar 的服务。
+- 侧边栏「最新推荐」若曾在后台保存过上游的旧默认链接，本分支会自动把它迁移到本仓库地址；自己填写的链接不受影响。
 
-> 本主题仅基于爱好修改，使用时请尊重原作者大前端版权。
+## 致谢与许可
+
+- 原始设计来自**大前端 DUX for WordPress**；Typecho 早期移植由 **hiCasper** 等社区作者完成，
+  在此一并致谢。本分支是在这些工作之上的**二次开发**，与上游仓库互不隶属。
+- 本分支由 **Ben** 维护，问题反馈与 PR 请到 https://github.com/sevilx/Typecho-theme-DUX 。
+- 代码按 GPL 许可发布（见 [LICENSE](LICENSE)）；请保留原作者署名，并遵守所用上游资源的许可。

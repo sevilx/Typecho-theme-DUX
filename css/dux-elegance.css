@@ -9,7 +9,8 @@
  *      少量硬编码色块覆盖，避免两套样式各自漂移。
  *   3. 所有布局覆盖都放在 min-width 媒体查询里，绝不破坏原主题的移动端断点。
  *
- * 版本：1.4.0
+ * 维护：Ben (https://github.com/sevilx/Typecho-theme-DUX)
+ * 版本：跟随 Typecho 版本（DUX_VERSION），不独立编号
  */
 
 /* ==========================================================================
@@ -867,7 +868,132 @@ img { vertical-align: middle; }
 @media (hover: none) { .dux-copy { opacity: 1; } }
 
 /* ==========================================================================
-   9. 动效降级 / 打印
+   9. 页面级补完：404 / 归档 / 独立页导航 / 标签云 / 友链 / 推荐位 / 评论层级
+   只命中这些页面独有的类名；布局沿用 main.css 原有断点，深浅色走同一组令牌。
+   ========================================================================== */
+
+/* 404 */
+.f404 { max-width: 720px; margin: 70px auto; padding: 0 20px; }
+.f404 img {
+    max-width: min(420px, 88%);
+    height: auto;
+    border-radius: var(--dux-radius);
+    box-shadow: var(--dux-shadow);
+}
+.f404 h1 {
+    margin: 30px 0 10px;
+    font-size: clamp(26px, 5vw, 44px);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: var(--dux-text-strong);
+}
+.f404 p { color: var(--dux-muted); }
+.f404 .btn-primary {
+    padding: 9px 24px;
+    border: 1px solid var(--dux-accent);
+    border-radius: 999px;
+    background: var(--dux-accent);
+    color: #fff;
+    box-shadow: var(--dux-shadow);
+    transition: background 0.2s var(--dux-ease), border-color 0.2s var(--dux-ease), transform 0.2s var(--dux-ease);
+}
+.f404 .btn-primary:hover, .f404 .btn-primary:focus-visible {
+    background: var(--dux-accent-hover);
+    border-color: var(--dux-accent-hover);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* 独立页左侧导航 */
+.pageside .pagemenu {
+    background: var(--dux-surface);
+    border: 1px solid var(--dux-border);
+    border-radius: var(--dux-radius);
+    box-shadow: var(--dux-shadow);
+    overflow: hidden;
+}
+.pagemenu li a {
+    background: var(--dux-surface);
+    border-color: var(--dux-border);
+    color: var(--dux-muted);
+    transition: color 0.2s var(--dux-ease), background 0.2s var(--dux-ease), padding-left 0.2s var(--dux-ease);
+}
+.pagemenu li a:hover { background: var(--dux-accent-soft); color: var(--dux-accent); padding-left: 26px; }
+.pagemenu li.active a, .pagemenu li.active a:hover {
+    background: var(--dux-accent); color: #fff; padding-left: 20px;
+}
+.pagemenu li:first-child a { border-radius: var(--dux-radius) var(--dux-radius) 0 0; }
+.pagemenu li:last-child a { border-radius: 0 0 var(--dux-radius) var(--dux-radius); }
+
+/* 归档 / 分类存档 */
+.archives .item { border-bottom-color: var(--dux-border); margin-bottom: 24px; padding-bottom: 2px; }
+.archives h3 { color: var(--dux-accent); font-weight: 650; }
+.archives h3 span { color: inherit !important; }   /* 盖过模板里写死的内联橙色 */
+.archives-list li {
+    list-style: none;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--dux-border);
+}
+.archives-list li:last-child { border-bottom: 0; }
+.archives-list li::before {
+    content: "";
+    display: inline-block;
+    width: 6px; height: 6px;
+    margin: 0 9px 2px 0;
+    border-radius: 50%;
+    background: var(--dux-accent-line);
+}
+.archives-list time { color: var(--dux-faint); font-family: var(--dux-mono); font-size: 12.5px; }
+.archives-list a { color: var(--dux-text); transition: color 0.2s var(--dux-ease); }
+.archives-list a:hover { color: var(--dux-accent); }
+.archives-list .text-muted { color: var(--dux-faint); }
+
+/* 标签云 / 友情链接 */
+.tag-clouds {
+    padding: 20px 16px;
+    background: var(--dux-surface-2);
+    border: 1px solid var(--dux-border);
+    border-radius: var(--dux-radius);
+}
+.plinks h2 { border-bottom-color: var(--dux-border); }
+.plinks ul li a {
+    border-color: var(--dux-border);
+    border-radius: var(--dux-radius-sm);
+    background: var(--dux-surface-2);
+    transition: border-color 0.2s var(--dux-ease), background 0.2s var(--dux-ease), color 0.2s var(--dux-ease);
+}
+.plinks ul li a:hover {
+    border-color: var(--dux-accent-line); background: var(--dux-accent-soft); color: var(--dux-accent);
+}
+
+/* 侧边栏「最新推荐」卡片 */
+.widget_ui_textasb a {
+    background: var(--dux-surface);
+    border-color: var(--dux-border);
+    border-radius: var(--dux-radius);
+    box-shadow: var(--dux-shadow);
+    transition: border-color 0.2s var(--dux-ease), box-shadow 0.2s var(--dux-ease), transform 0.2s var(--dux-ease);
+}
+.widget_ui_textasb a:hover,
+.widget_ui_textasb a.style01:hover,
+.widget_ui_textasb a.style02:hover {
+    border-color: var(--dux-accent-line);
+    box-shadow: var(--dux-shadow-hover);
+    transform: translateY(-2px);
+}
+.widget_ui_textasb a h2 { color: var(--dux-text-strong); font-weight: 650; }
+.widget_ui_textasb a p { color: var(--dux-muted); }
+.widget_ui_textasb a strong { font-size: 12px; letter-spacing: 0.04em; border-radius: 999px 999px 0 0; }
+.widget_ui_textasb a.style01, .widget_ui_textasb a.style02 { color: var(--dux-text); }
+.widget_ui_textasb a.style01 strong, .widget_ui_textasb a.style02 strong { background: var(--dux-accent); }
+
+/* 嵌套评论：只加一条引导竖线，不改原有缩进与头像定位 */
+.comment .children { padding-left: 14px; border-left: 2px solid var(--dux-border); }
+.comment .children .comment { border-top-color: var(--dux-border); }
+.depth-1 { border-bottom-color: var(--dux-border); }
+
+/* ==========================================================================
+   10. 动效降级 / 打印
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }

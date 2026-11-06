@@ -51,14 +51,11 @@ $duxElegance = duxEleganceEnabled();
                 <p>
                     &copy; 2010 - <?php echo date("Y"); ?> <a href="<?php $this->options->siteUrl(); ?>"><?php $this->options->title();?></a>
                     <?php
-                    // 后台设置优先；设置被清空时回退到 functions.php 的 DUX_SITE_ICP，避免备案信息丢失
+                    // 备案号只从「设置外观 → 备案号」读取，代码里不内置任何站点信息，方便任何人直接安装使用
                     $duxIcp = trim((string) $this->options->miitbeian);
-                    if ($duxIcp === '') {
-                        $duxIcp = defined('DUX_SITE_ICP') ? DUX_SITE_ICP : '';
-                    }
-                    if ($duxIcp !== ''): ?> | <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer nofollow"><?php echo duxEsc($duxIcp); ?></a><?php endif; ?>
+                    if ($duxIcp !== ''): ?> | <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer nofollow"><?php echo duxEsc($duxIcp); ?></a><?php endif; ?> | Powered by <a href="https://typecho.org/" target="_blank" rel="noopener noreferrer nofollow">Typecho</a> | Theme <a href="https://github.com/sevilx/Typecho-theme-DUX" target="_blank" rel="noopener noreferrer nofollow">DUX · Ben Edition</a> by Ben
                     <br>
-                    <!-- Powered by Typecho | Theme DUX, forked from https://github.com/hiCasper/Typecho-theme-DUX -->
+                    <!-- 上游致谢：大前端 DUX for WordPress → hiCasper/Typecho-theme-DUX；本分支由 Ben 独立维护 -->
                     本站部分图片、文章来源于网络，版权归原作者所有，如有侵权，请联系我们删除。
                 </p>
             </div>
