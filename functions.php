@@ -300,6 +300,23 @@ function duxSafeUrl($url)
     return $url;
 }
 
+/** 缩略图 URL 白名单：http(s) 绝对地址或站内绝对路径，其余一律拒绝 */
+function duxSafeImageUrl($url)
+{
+    $url = preg_replace('/[\x00-\x20\x7F]+/', '', trim((string) $url));
+    if ($url === '') {
+        return '';
+    }
+    // 协议相对 CDN 补全为 https 后仍要走完整主机名白名单
+    if (strpos($url, '//') === 0) {
+        $url = 'https:' . $url;
+    }
+    if ($url[0] === '/' && strpos($url, '//') !== 0) {
+        return $url;
+    }
+    return duxSafeUrl($url);
+}
+
 /**
  * 头像地址集中生成。
  * 默认使用国内可达的 Cravatar 镜像（原 cn.gravatar.com 已长期不可用），
@@ -313,6 +330,16 @@ function duxAvatarUrl($mail, $size = 50, $rating = 'G')
     $base = $mirror === '' ? 'https://cravatar.cn/avatar' : rtrim($mirror, '/');
     return duxEsc($base . '/' . md5(strtolower(trim((string) $mail)))
         . '?s=' . (int) $size . '&r=' . rawurlencode((string) $rating) . '&d=mm');
+}
+
+/** 侧栏组件：老站点未保存配置时给默认值；已显式清空则尊重站长设置 */
+function duxSidebarBlocks()
+{
+    $blocks = duxOptions()->sidebarBlock;
+    if ($blocks === null || $blocks === '') {
+        return array('ShowRecentPosts', 'ShowCategory', 'ShowRecentComments');
+    }
+    return (array) $blocks;
 }
 
 /** Widget 工厂：优先新命名空间，回退旧类名 */
@@ -366,6 +393,17 @@ function duxLegacyCommentToken($archive)
 /* ------------------------------------------------------------------ */
 function themeConfig($form)
 {
+    // 内容安全策略：基线白名单，站长如遇第三方统计/播放器被拦可一键关闭。
+    $csp = duxFormElement('Radio', 'contentSecurityPolicy',
+        array('able' => _t('启用'), 'disable' => _t('关闭')),
+        'able', _t('内容安全策略（CSP）'),
+        _t('限制外部脚本来源与表单提交目标；若第三方统计或播放器被拦截，可关闭本项。'));
+    $form->addInput($csp);
+
+    $cspExtra = duxFormElement('Text', 'cspExtraSources', NULL, '', _t('CSP 额外脚本来源'),
+        _t('可选，空格分隔的完整源如 https://cdn.example.com；只允许 https 域名，不含路径。用于放行被 CSP 拦下的自有统计/播放器脚本。'));
+    $form->addInput($cspExtra);
+
     // 外观增强：三项都留空/关闭即可完整回退到 1.3.x 的原版视觉效果
     $elegance = duxFormElement('Radio', 'elegance',
         array('able' => _t('启用'), 'disable' => _t('关闭')),
@@ -395,6 +433,10 @@ function themeConfig($form)
 
     $customcss = duxFormElement('Textarea', 'customcss', null, NULL, _t('自定义样式'), _t('已经包含style标签'));
     $form->addInput($customcss);
+
+    $siteBuildTime = duxFormElement('Text', 'siteBuildTime', NULL, '', _t('建站时间'),
+        _t('可选，格式 YYYY-MM-DD；留空则侧栏不显示「本站运营」。主题不内置任何站点信息。'));
+    $form->addInput($siteBuildTime);
 
     $DnsPrefetch = duxFormElement('Radio', 'DnsPrefetch',
         array('able' => _t('启用'), 'disable' => _t('禁止')),
@@ -739,6 +781,12 @@ function showThumb($obj, $size = null, $link = false)
             : rtrim((string) $options->themeUrl, '/') . '/img/thumb/' . rand(1, 25) . '.jpg';
     }
 
+    // 附件 URL、正文首图、后台 CDN 都可能被污染，统一过协议白名单
+    $thumb = duxSafeImageUrl($thumb);
+    if ($thumb === '') {
+        $thumb = rtrim((string) $options->themeUrl, '/') . '/img/thumb/1.jpg';
+    }
+
     // 缓存后同一篇文章在首页/侧边栏/相关推荐里显示同一张随机图，避免抖动
     if ($cid > 0) {
         $cache[$cid] = $thumb;
@@ -876,8 +924,16 @@ function sitebar_ad($obj)
 /** 站点运行时间 */
 function getBuildTime()
 {
-    // 在下面按格式输入本站创建的时间
-    $site_create_time = strtotime('2010-01-01 00:00:00');
+    // 建站时间只从后台「设置外观 → 建站时间」读取；留空则不输出，
+    // 主题代码里不内置任何站点运营信息，方便任何人直接安装使用。
+    $raw = trim((string) duxOptions()->siteBuildTime);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+        return;
+    }
+    $site_create_time = strtotime($raw . ' 00:00:00');
+    if ($site_create_time === false || $site_create_time > time()) {
+        return;
+    }
     $time = time() - $site_create_time;
     if (is_numeric($time)) {
         $value = array(

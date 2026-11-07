@@ -299,8 +299,10 @@ img { vertical-align: middle; }
     box-shadow: var(--dux-shadow);
 }
 
+/* 注意：padding / 缩略图尺寸属于布局覆盖，只能出现在 >=721px 媒体查询里。
+   <=720px 必须把这几项完整交还 main.css（180px 预留 + 160x109 / -170px），
+   否则增强层的 220x150 会和 main.css 的 margin-left:-170px 叠加把卡片撑破。 */
 .excerpt {
-    padding: 20px;
     margin-bottom: 16px;
     transition: transform 0.28s var(--dux-ease), box-shadow 0.28s var(--dux-ease), border-color 0.28s var(--dux-ease);
 }
@@ -310,14 +312,20 @@ img { vertical-align: middle; }
     box-shadow: var(--dux-shadow-hover);
     transform: translateY(-2px);
 }
+
+/* 桌面列表卡片：255px 左内边距预留 220x150 缩略图（-235px 偏移与 main.css 一致）。
+   本块只在 >=721px 参与层叠；<=720px 时增强层不输出任何几何声明，
+   main.css 的 720 / 480 / 360px 子断点（160x109、100x68）原样生效，
+   因此无需、也不应在增强层补写移动端复位规则。 */
 @media (min-width: 721px) {
-    .excerpt { padding-left: 255px; }
+    .excerpt { padding: 20px 20px 20px 255px; }
+    .excerpt .focus { width: 220px; margin-left: -235px; }
+    .excerpt .thumb { width: 220px; height: 150px; }
 }
 
+/* 以下都是与布局无关的视觉增强，深浅色与所有断点统一保留 */
 .excerpt .focus { border-radius: var(--dux-radius-sm); overflow: hidden; }
 .excerpt .thumb {
-    width: 220px;
-    height: 150px;
     object-fit: cover;
     border-radius: var(--dux-radius-sm);
     background: var(--dux-surface-2);
@@ -785,7 +793,9 @@ img { vertical-align: middle; }
     .single .content { padding: 8px 18px 24px; }
     .article-title { font-size: 23px; }
     .article-content { font-size: 15.5px; line-height: 1.85; }
-    .excerpt { padding: 15px; }
+    /* 此处不要再给 .excerpt 写 padding：简写会抹掉 main.css 的 padding-left:180px，
+       160px 缩略图会以 -170px 负 margin 溢出卡片。移动端几何值一律回落到 main.css，
+       桌面几何值统一放在上面的 @media (min-width: 721px) 里。 */
     .title, .pagetitle { padding: 11px 14px; }
     .rollbar { right: 12px; bottom: 12px; }
 

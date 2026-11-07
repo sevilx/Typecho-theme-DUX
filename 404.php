@@ -1,4 +1,8 @@
-<?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
+<?php
+if (!defined('__TYPECHO_ROOT_DIR__')) exit;
+if (!defined('DUX_404_PAGE')) define('DUX_404_PAGE', true);
+http_response_code(404);
+?>
 <?php $this->need('header.php'); ?>
     <section class="container">
         <div class="f404">

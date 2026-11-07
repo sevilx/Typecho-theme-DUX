@@ -31,7 +31,8 @@ $this->widget('Widget_Contents_Post_Recent', 'pageSize=10000')->to($archives);
 
 $month = '';
 $opened = false;
-$output = '<article class="archives">';
+// 直接流式输出，不再把全站文章拼成一个大字符串，内存峰值与文章数解耦
+echo '<article class="archives">';
 
 while ($archives->next()):
     $yearTmp = date('Y', $archives->created);
@@ -41,24 +42,23 @@ while ($archives->next()):
     if ($key !== $month) {
         // 只有确实打开过月份分组才闭合，避免空站点产生多余的 </ul></div>
         if ($opened) {
-            $output .= '</ul></div>';
+            echo '</ul></div>';
         }
         $month = $key;
-        $output .= '<div class="item"><h3>' . $yearTmp . '年' . $monthTmp
+        echo '<div class="item"><h3>' . $yearTmp . '年' . $monthTmp
             . ' 月</h3><ul class="archives-list">';
         $opened = true;
     }
 
-    $output .= '<li><time>' . date('d日: ', $archives->created) . '</time><a href="'
+    echo '<li><time>' . date('d日: ', $archives->created) . '</time><a href="'
         . duxEsc($archives->permalink) . '">' . duxEsc($archives->title)
         . '</a> <span class="text-muted">' . (int) $archives->commentsNum . '评论</span></li>';
 endwhile;
 
 if ($opened) {
-    $output .= '</ul></div>';
+    echo '</ul></div>';
 }
-$output .= '</article>';
-echo $output;
+echo '</article>';
 ?>
         </div>
 <?php $this->need('footer.php'); ?>

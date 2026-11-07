@@ -1,7 +1,7 @@
 <?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
     <!-- start sidebar -->
     <aside class="sidebar">
-<?php if (!empty($this->options->sidebarBlock) && in_array('ShowRecentPosts', $this->options->sidebarBlock)): ?>
+<?php if (in_array('ShowRecentPosts', duxSidebarBlocks(), true)): ?>
     <div class="widget widget-tops">
         <ul class="widget-nav"><li class="active">最新文章</li></ul>
         <ul class="widget-navcontent">
@@ -16,7 +16,7 @@
         </ul>
     </div>
 <?php endif; ?>
-<?php if (!empty($this->options->sidebarBlock) && in_array('ShowRecentPosts', $this->options->sidebarBlock)): ?>
+<?php if (in_array('ShowRecentPosts', duxSidebarBlocks(), true)): ?>
     <div class="widget widget-tops">
         <ul class="widget-nav"><li class="active">站点统计</li></ul>
         <ul class="widget-navcontent">
@@ -29,13 +29,13 @@
 <?php if (class_exists('PageViews_Plugin') && is_callable(array('PageViews_Plugin', 'showPageViews'))): ?>
 <li><?php PageViews_Plugin::showPageViews(); ?></li>
 <?php endif; ?>
-<li>本站运营：<?php getBuildTime(); ?></li>
+<?php if (trim((string) duxOptions()->siteBuildTime) !== ''): ?><li>本站运营：<?php getBuildTime(); ?></li><?php endif; ?>
                 </ul>
             </li>
         </ul>
     </div>
 <?php endif; ?>
-<?php if (!empty($this->options->sidebarBlock) && in_array('ShowCategory', $this->options->sidebarBlock)): ?>
+<?php if (in_array('ShowCategory', duxSidebarBlocks(), true)): ?>
     <?php
         $sad1 = sitebar_ad($this->options->sidebarAD);
         $maxi = (int) floor(count($sad1) / 3);
@@ -51,7 +51,7 @@
         }
     ?>
 <?php endif; ?>
-<?php if (!empty($this->options->sidebarBlock) && in_array('ShowRecentComments', $this->options->sidebarBlock)): ?>
+<?php if (in_array('ShowRecentComments', duxSidebarBlocks(), true)): ?>
     <!-- 多说(duoshuo) 评论挂件已下线，原占位 DIV 移除 -->
     <div class="widget widget_ui_comments">
         <h3>最新评论</h3>
@@ -66,7 +66,7 @@
         </ul>
     </div>
 <?php endif; ?>
-<?php if (!empty($this->options->sidebarBlock) && in_array('ShowTags', $this->options->sidebarBlock)): ?>
+<?php if (in_array('ShowTags', duxSidebarBlocks(), true)): ?>
     <div class="widget widget_ui_tags">
         <h3>标签云</h3>
         <div class="items">

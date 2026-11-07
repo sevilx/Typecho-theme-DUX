@@ -105,7 +105,7 @@ $rememberedAvatar = duxAvatarUrl($rememberMail, 50);
     <div id="postcomments">
         <ol class="commentlist"><?php $comments->listComments(array('before' => '', 'after' => '')); ?></ol>
         <div class="pagination">
-            <?php $comments->pageNav('←','→',2,'...',array('wrapTag' => 'ul')); ?>
+            <?php $comments->pageNav('←','→',2,'...',array('wrapTag' => 'ul', 'wrapClass' => 'page-navigator', 'itemTag' => 'li', 'textTag' => 'span', 'currentClass' => 'active', 'prevClass' => 'prev-page', 'nextClass' => 'next-page')); ?>
         </div>
     </div>
 <?php endif; ?>

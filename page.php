@@ -21,7 +21,7 @@
             <article class="article-content">
                 <?php parseContent($this); ?>
             </article>
-<?php $this->need('comments.php'); ?>
+<?php if ($this->allow('comment')) { $this->need('comments.php'); } ?>
         </div>
     </div>
 <?php $this->need('footer.php'); ?>

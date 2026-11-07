@@ -17,6 +17,45 @@ $duxLogoTags = $this->is('index') ? 'h1' : 'div';
     <meta name="apple-mobile-web-app-title" content="<?php $this->options->title();?>">
     <meta http-equiv="Cache-Control" content="no-siteapp">
     <meta http-equiv="Cache-Control" content="no-transform">
+<?php
+// 基线 CSP：必须位于所有 script/link 之前。meta 版不支持 frame-ancestors / report-uri，
+// 服务器侧响应头仍应单独配置。内联统计代码与主题首屏脚本决定了暂时保留 unsafe-inline。
+$duxCspOn = (string) ($this->options->contentSecurityPolicy ?? '') !== 'disable';
+if ($duxCspOn):
+    // 站长可补充自有脚本来源；严格校验防止把 ; / 空格 / 路径注入成新的 CSP 指令。
+    $duxCspExtra = array();
+    foreach (preg_split('/\s+/', trim((string) ($this->options->cspExtraSources ?? ''))) as $duxCspSrc) {
+        if ($duxCspSrc !== '' && preg_match('~^https://[A-Za-z0-9.-]+$~', $duxCspSrc)) {
+            $duxCspExtra[] = $duxCspSrc;
+        }
+    }
+    $duxCspScripts = array(
+        "'self'", "'unsafe-inline'", "'unsafe-eval'",
+        'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com', 'https://lib.baomitu.com',
+        'https://static.geetest.com', 'https://hcaptcha.com',
+        'https://challenges.cloudflare.com', 'https://recaptcha.net', 'https://www.recaptcha.net',
+        'https://www.google-analytics.com', 'https://www.googletagmanager.com', 'https://hm.baidu.com',
+    );
+    $duxCspStyles = array(
+        "'self'", "'unsafe-inline'", 'https://fonts.googleapis.com',
+        'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com',
+    );
+    $duxCsp = array(
+        "default-src 'self'",
+        'script-src ' . implode(' ', array_merge($duxCspScripts, $duxCspExtra)),
+        'style-src ' . implode(' ', $duxCspStyles),
+        "img-src 'self' data: blob: https:",
+        "font-src 'self' data: https://fonts.gstatic.com",
+        "connect-src 'self' https:",
+        "media-src 'self' data: blob: https:",
+        "frame-src 'self' https:",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+    );
+?>
+    <meta http-equiv="Content-Security-Policy" content="<?php echo duxEsc(implode('; ', $duxCsp)); ?>">
+<?php endif; ?>
     <script>
         /* 首屏同步写入主题，避免深色模式闪白；脚本失败时 CSS 仍会跟随系统偏好 */
         (function () {
@@ -24,8 +63,9 @@ $duxLogoTags = $this->is('index') ? 'h1' : 'div';
             var mode = (m && m.content) || 'auto', saved = null;
             try { saved = localStorage.getItem('dux-theme'); } catch (e) {}
             var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            var t = mode === 'disable' ? 'light'
-                  : (saved || (mode === 'dark' || (mode === 'auto' && dark) ? 'dark' : 'light'));
+            // 增强关闭 / 深色策略 disable 时完全不写 data-theme，回到原版外观
+            if (mode === 'disable') { return; }
+            var t = saved || (mode === 'dark' || (mode === 'auto' && dark) ? 'dark' : 'light');
             document.documentElement.setAttribute('data-theme', t);
             document.documentElement.style.colorScheme = t;
             var c = document.querySelector('meta[name="theme-color"]');
@@ -56,12 +96,22 @@ $duxLogoTags = $this->is('index') ? 'h1' : 'div';
 
     <link rel="stylesheet" href="<?php echo duxEsc(duxAssetUrl('css/bootstrap.min.css')); ?>" type="text/css" media="all" />
     <link rel="stylesheet" href="<?php echo duxEsc(duxAssetUrl('font-awesome/css/font-awesome.min.css')); ?>" type="text/css" media="all" />
+<?php if (defined('DUX_404_PAGE')): ?>
+    <meta name="robots" content="noindex, nofollow">
+<?php endif; ?>
     <link rel="stylesheet" href="<?php echo duxEsc(duxAssetUrl('css/main.css')); ?>" type="text/css" media="all" />
 <?php if ($duxElegance): ?>
     <link rel="stylesheet" href="<?php echo duxEsc(duxAssetUrl('css/dux-elegance.css')); ?>" type="text/css" media="all" />
 <?php endif; ?>
 
     <style>
+<?php if (!$duxElegance): ?>
+        /* 外观增强关闭：增强层样式表不加载，补一份不依赖任何 CSS 变量的最小 a11y 规则，
+           保证屏幕阅读器文本与跳转主内容链接不会变成可见元素。 */
+        .dux-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        .dux-skip-link { position: fixed; top: -60px; left: 16px; z-index: 2000; padding: 10px 18px; background: #1e88e5; color: #fff !important; border-radius: 0 0 8px 8px; box-shadow: 0 2px 8px rgba(0,0,0,.25); text-decoration: none; transition: top .2s ease; }
+        .dux-skip-link:focus { top: 0; outline: 2px solid #1e88e5; outline-offset: 2px; }
+<?php endif; ?>
 <?php if ($duxElegance && duxAccentCss() !== ''): ?>
         <?php echo duxAccentCss(); ?>
 <?php endif; ?>

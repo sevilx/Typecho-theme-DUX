@@ -49,7 +49,7 @@ $duxElegance = duxEleganceEnabled();
 <?php endif; ?>
             <div class="copyright">
                 <p>
-                    &copy; 2010 - <?php echo date("Y"); ?> <a href="<?php $this->options->siteUrl(); ?>"><?php $this->options->title();?></a>
+                    &copy; <?php echo date("Y"); ?> <a href="<?php $this->options->siteUrl(); ?>"><?php $this->options->title();?></a>
                     <?php
                     // 备案号只从「设置外观 → 备案号」读取，代码里不内置任何站点信息，方便任何人直接安装使用
                     $duxIcp = trim((string) $this->options->miitbeian);

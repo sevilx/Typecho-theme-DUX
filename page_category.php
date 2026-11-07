@@ -30,11 +30,12 @@ $this->need('header.php');
 $this->widget('Widget_Metas_Category_List')->to($categories);
 
 if ($categories->have()) {
-    $output = '<article class="archives">';
+    // 流式输出：分类数 × 文章数不再同时驻留内存
+    echo '<article class="archives">';
 
     while ($categories->next()) {
         $mid = (int) $categories->mid;
-        $output .= '<div class="item"><h3><a href="' . duxEsc($categories->permalink)
+        echo '<div class="item"><h3><a href="' . duxEsc($categories->permalink)
             . '"><span style="color:#F15A23">' . duxEsc($categories->name) . '</span></a></h3>'
             . '<ul class="archives-list">';
 
@@ -49,7 +50,7 @@ if ($categories->have()) {
             )->to($categoryPosts);
 
             while ($categoryPosts->next()) {
-                $output .= '<li><a href="' . duxEsc($categoryPosts->permalink) . '">'
+                echo '<li><a href="' . duxEsc($categoryPosts->permalink) . '">'
                     . duxEsc($categoryPosts->title) . '</a> <span class="text-muted">'
                     . (int) $categoryPosts->commentsNum . '评论</span></li>';
             }
@@ -57,16 +58,15 @@ if ($categories->have()) {
             // 单个分类查询异常（分类被删除、分页越界等）不应让整个页面 500
         }
 
-        $output .= '</ul></div>';
+        echo '</ul></div>';
     }
 
-    $output .= '</article>';
-    echo $output;
+    echo '</article>';
 } else {
     echo '<article class="archives">无分类</article>';
 }
 ?>
-<?php $this->need('comments.php'); ?>
+<?php if ($this->allow('comment')) { $this->need('comments.php'); } ?>
         </div>
     </div>
 <?php $this->need('footer.php'); ?>

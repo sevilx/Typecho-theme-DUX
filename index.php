@@ -17,6 +17,8 @@ $this->need('header.php');?>
     <section class="container">
     <div class="content-wrap">
         <div class="content" id="dux-main" tabindex="-1">
+<?php $duxFirstPage = !method_exists($this, 'getCurrentPage') || (int) $this->getCurrentPage() <= 1; ?>
+<?php if ($this->is('index') && $duxFirstPage): ?>
             <!--幻灯片开始-->
 <?php if ($this->options->Slider == 'SliderTrue'): ?>
                 <?php slout(); ?>
@@ -24,6 +26,7 @@ $this->need('header.php');?>
             <!--幻灯片结束-->
             <!--置顶文章-->
             <?php hotpost(); ?>
+<?php endif; ?>
 
             <div class="title">
                 <h3>最新发布</h3>

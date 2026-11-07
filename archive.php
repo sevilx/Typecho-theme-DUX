@@ -37,7 +37,7 @@
                 </div>
             </div>
         </div>
-<?php $this->need('page_sidebar.php'); ?>
+<?php $this->need('sidebar.php'); ?>
     </section>
 
 <?php $this->need('footer.php'); ?>

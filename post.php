@@ -20,7 +20,7 @@
                 <div class="article-tags">标签：<?php $this->tags(' ', true, '<a>没有标签</a>'); ?></div>
 <?php if($this->options->authordesc && !empty($this->options->authordesc) ): ?>
                 <div class="article-author">
-                    <div class="avatar"><?php $this->author->gravatar(50, 'G'); ?></div><h4><i class="fa fa-user" aria-hidden="true"></i><?php $this->author(); ?></h4>
+                    <div class="avatar"><img alt="" class="avatar photo" width="50" height="50" decoding="async" referrerpolicy="no-referrer" src="<?php echo duxAvatarUrl((string) $this->author->mail, 50); ?>"></div><h4><i class="fa fa-user" aria-hidden="true"></i><?php $this->author(); ?></h4>
                     <span><?php echo duxEsc($this->options->authordesc); ?></span>
                 </div>
 <?php endif; ?>
