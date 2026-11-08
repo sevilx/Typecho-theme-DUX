@@ -481,6 +481,21 @@ img { vertical-align: middle; }
     .article-content table { display: block; overflow-x: auto; white-space: nowrap; }
 }
 
+/* 641~1024px：正文里的裸 <table> 没有 wrapper，table-layout:auto 下中文长句 /
+   长数字把固有最小宽度撑到容器之外（main.css:1018 的 width:100% 对 auto 布局
+   只是建议值），而 overflow:hidden 在 display:table 上不产生裁剪，于是出现
+   文档级横向滚动。此区间保留 display:table 以维持 thead/tbody 的列对齐，
+   改用固定布局 + 单元格内允许折行，让表格宽度恒等于容器。
+   ≤640px 的块级横向滚动方案、≥1025px 的桌面外观均不受影响。 */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .article-content table {
+        table-layout: fixed;
+        width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+}
+
 .post-copyright {
     background: var(--dux-surface-2);
     border: 1px dashed var(--dux-border-strong);
